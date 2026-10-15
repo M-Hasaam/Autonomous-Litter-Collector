@@ -1,0 +1,18 @@
+# Tested on Windows 11, Python 3.12. Create a virtual environment first (see README.md).
+# The export path (checkpoint -> ONNX -> onnx2tf -> TFLite) is sensitive to versions, so these
+# are pinned to the combination that was verified to produce a working model.
+ultralytics==8.3.100
+torch>=2.2
+numpy==2.2.6
+tensorflow==2.21.0
+tf_keras==2.21.0
+onnx==1.20.1
+onnx2tf==2.6.9
+onnxruntime
+onnxslim
+onnxsim
+sng4onnx
+sne4onnx
+onnx_graphsurgeon
+ai-edge-litert==2.1.2
+PyYAML

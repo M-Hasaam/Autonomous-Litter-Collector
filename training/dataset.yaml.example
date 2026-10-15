@@ -1,0 +1,25 @@
+# YOLO detection dataset config for LitterVision.
+#
+# This is an EXAMPLE. Copy it, then edit the copy for your real dataset:
+#     cp dataset.yaml.example my_dataset.yaml        (Windows: copy dataset.yaml.example my_dataset.yaml)
+#
+# Expected folder layout (labels live next to images with the same file name, .txt):
+#     my_litter_dataset/
+#         images/train/*.jpg      labels/train/*.txt
+#         images/val/*.jpg        labels/val/*.txt
+#
+# Each label line:  <class_id> <x_center> <y_center> <width> <height>   (all normalized 0..1)
+
+# Dataset root folder. A relative path is resolved against THIS yaml file's folder.
+path: ./my_litter_dataset
+
+# Image folders, relative to `path`.
+train: images/train
+val: images/val
+
+# Class names. The ORDER defines the class ids and must match your label files exactly.
+# Do not reorder after labeling, and update this list if you add or remove classes.
+names:
+  0: crumpled_paper
+  1: can
+  2: plastic_bottle
