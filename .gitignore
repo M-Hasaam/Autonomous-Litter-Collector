@@ -13,3 +13,23 @@
 .externalNativeBuild
 .cxx
 local.properties
+
+# Python / training workspace (training/)
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+training/datasets/
+training/runs/
+training/predictions/
+training/*_saved_model/
+training/*.onnx
+training/*.onnx.data
+*.pt
+# Real dataset configs (copy of dataset.yaml.example); the .example file stays tracked
+training/dataset.yaml
+training/my_dataset.yaml
+# Export staging/backups. The app's litter_detector.tflite and labels.txt are NOT ignored.
+app/src/main/assets/*.bak
+app/src/main/assets/*.new
