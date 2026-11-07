@@ -1,5 +1,6 @@
 import asyncio
 import threading
+import time
 import tkinter as tk
 from tkinter import ttk
 
@@ -12,6 +13,7 @@ SERVICE_UUID = "12345678-1234-1234-1234-1234567890AB"
 
 # Servo protocol: V<index> <angle> <speed deg/sec>, e.g. V0 90 60
 SERVO_SPEED = 60
+SERVO_SEND_INTERVAL = 0.06  # seconds between live commands while dragging a slider
 SERVO_NAMES = ["Base Rotation", "Shoulder", "Elbow", "Gripper"]
 
 class AICarController:
@@ -74,6 +76,9 @@ class AICarController:
         self.servo_scales = []
         self.servo_values = []
         self.speed_scales = []
+        self.dragging = set()
+        self.last_servo_send = {}
+        self.pending_servo_send = {}
 
         for i, name in enumerate(SERVO_NAMES):
             row = ttk.Frame(servos_frame)
@@ -98,7 +103,8 @@ class AICarController:
             )
             scale.set(90)
             scale.pack(fill="x")
-            scale.bind("<ButtonRelease-1>", lambda event, index=i: self._send_servo(index))
+            scale.bind("<ButtonPress-1>", lambda event, index=i: self.dragging.add(index))
+            scale.bind("<ButtonRelease-1>", lambda event, index=i: self._servo_released(index))
             self.servo_scales.append(scale)
 
             speed_row = ttk.Frame(row)
@@ -226,6 +232,34 @@ class AICarController:
     def _slider_changed(self, index, value):
         angle = int(float(value))
         self.servo_values[index].set(f"{angle}°")
+        if index in self.dragging:
+            self._send_servo_throttled(index)
+
+    def _send_servo_throttled(self, index):
+        # Send live while dragging, at most every SERVO_SEND_INTERVAL seconds.
+        # A trailing send guarantees the last position reaches the car.
+        if index in self.pending_servo_send:
+            return
+        wait = SERVO_SEND_INTERVAL - (time.monotonic() - self.last_servo_send.get(index, 0))
+        if wait <= 0:
+            self.last_servo_send[index] = time.monotonic()
+            self._send_servo(index)
+        else:
+            self.pending_servo_send[index] = self.root.after(
+                int(wait * 1000) + 1, lambda: self._flush_servo(index)
+            )
+
+    def _flush_servo(self, index):
+        self.pending_servo_send.pop(index, None)
+        self.last_servo_send[index] = time.monotonic()
+        self._send_servo(index)
+
+    def _servo_released(self, index):
+        self.dragging.discard(index)
+        pending = self.pending_servo_send.pop(index, None)
+        if pending is not None:
+            self.root.after_cancel(pending)
+        self._send_servo(index)
 
     def _send_servo(self, index):
         angle = int(self.servo_scales[index].get())
