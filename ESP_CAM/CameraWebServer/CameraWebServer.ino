@@ -24,6 +24,16 @@ const char *ap_password = "12345678";  // at least 8 characters
 #define AP_CHANNEL 1                   // 2.4 GHz channel 1..11 (12-13 are rejected by the ESP default region). Channel did not matter much in tests.
 
 // ===========================
+// Wired mode: send JPEG frames over the USB cable at high baud (no WiFi at all).
+// View with ESP_CAM/scripts/camera_serial.py. Set USE_SERIAL_STREAM to 0 for the WiFi web server.
+// Frame format: A5 5A C3 3C | uint32 length (little-endian) | JPEG bytes
+// ===========================
+#define USE_SERIAL_STREAM 1
+#define SERIAL_BAUD 460800
+#define SERIAL_FRAMESIZE FRAMESIZE_QVGA  // QVGA 320x240; try FRAMESIZE_VGA (640x480) for a bigger picture, fewer FPS
+#define SERIAL_QUALITY 12                // lower number = better quality, bigger frames
+
+// ===========================
 // Optional: Static IP configuration
 // Set USE_STATIC_IP to true if you want a fixed IP (e.g. 192.168.137.30 for camera_test.py)
 // ===========================
@@ -94,10 +104,19 @@ void setup() {
 #endif
 
   // camera init
-  esp_err_t err = esp_camera_init(&config);
+  esp_err_t err = ESP_FAIL;
+  for (int attempt = 1; attempt <= 3 && err != ESP_OK; attempt++) {
+    err = esp_camera_init(&config);
+    if (err != ESP_OK) {
+      Serial.printf("Camera init failed (attempt %d) with error 0x%x\n", attempt, err);
+      esp_camera_deinit();
+      delay(500);
+    }
+  }
   if (err != ESP_OK) {
-    Serial.printf("Camera init failed with error 0x%x\n", err);
-    return;
+    Serial.println("Camera init failed, restarting board...");
+    delay(1000);
+    ESP.restart();
   }
   Serial.println("Camera init succeeded!");
 
@@ -110,9 +129,14 @@ void setup() {
   }
   // drop down frame size for higher initial frame rate
   if (config.pixel_format == PIXFORMAT_JPEG) {
+#if USE_SERIAL_STREAM
+    s->set_framesize(s, SERIAL_FRAMESIZE);
+    s->set_quality(s, SERIAL_QUALITY);
+#else
     s->set_framesize(s, FRAMESIZE_QVGA);  // 320x240. VGA gave ~1 FPS and quality 10 gave ~7 FPS on this WiFi link
     s->set_quality(s, 18);                // 18 gave ~45 FPS; lower number = better quality but bigger frames
-    s->set_aec2(s, 1);                   // better auto-exposure in dim light
+#endif
+    s->set_aec2(s, 1);                    // better auto-exposure in dim light
   }
 
 #if defined(CAMERA_MODEL_M5STACK_WIDE) || defined(CAMERA_MODEL_M5STACK_ESP32CAM)
@@ -127,6 +151,15 @@ void setup() {
 // Setup LED FLash if LED pin is defined in camera_pins.h
 #if defined(LED_GPIO_NUM)
   setupLedFlash();
+#endif
+
+#if USE_SERIAL_STREAM
+  // Wired mode: no WiFi. Switch the UART to a high baud rate and stream frames from loop().
+  Serial.println("Serial stream mode: switching to high baud rate");
+  Serial.flush();
+  Serial.updateBaudRate(SERIAL_BAUD);
+  Serial.setDebugOutput(false);  // keep driver log text out of the binary stream
+  return;
 #endif
 
 #if USE_SOFTAP
@@ -172,6 +205,30 @@ void setup() {
 extern volatile uint32_t diag_frames, diag_bytes, diag_capture_us, diag_send_us, diag_max_send_us, diag_capture_fail, diag_send_fail;
 
 void loop() {
+#if USE_SERIAL_STREAM
+  // Status text between frames (the viewer/bridge skip anything that is not a frame).
+  // It shows whether the camera is capturing and sending, even if no viewer is attached.
+  static uint32_t sentFrames = 0, noFrame = 0, lastStatMs = 0;
+  if (millis() - lastStatMs >= 1000) {
+    lastStatMs = millis();
+    Serial.printf("\nCAMSTAT sent=%u nofb=%u up=%lu\n", sentFrames, noFrame, millis() / 1000);
+  }
+  camera_fb_t *fb = esp_camera_fb_get();
+  if (!fb) {
+    noFrame++;
+    delay(5);
+    return;
+  }
+  if (fb->format == PIXFORMAT_JPEG) {
+    sentFrames++;
+    uint32_t len = fb->len;
+    const uint8_t hdr[8] = {0xA5, 0x5A, 0xC3, 0x3C, (uint8_t)(len & 0xFF), (uint8_t)((len >> 8) & 0xFF), (uint8_t)((len >> 16) & 0xFF), (uint8_t)((len >> 24) & 0xFF)};
+    Serial.write(hdr, sizeof(hdr));
+    Serial.write(fb->buf, len);
+  }
+  esp_camera_fb_return(fb);
+  return;
+#endif
   // Diagnostics: one line per second so you can see where the bottleneck is
   delay(1000);
 
