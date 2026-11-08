@@ -17,7 +17,7 @@ const char *password = "12345678";
 // Optional: Static IP configuration
 // Set USE_STATIC_IP to true if you want a fixed IP (e.g. 192.168.137.30 for camera_test.py)
 // ===========================
-#define USE_STATIC_IP true
+#define USE_STATIC_IP true  // Windows hotspot subnet is 192.168.137.x
 IPAddress static_ip(192, 168, 137, 30);
 IPAddress gateway(192, 168, 137, 1);
 IPAddress subnet(255, 255, 255, 0);
@@ -100,7 +100,9 @@ void setup() {
   }
   // drop down frame size for higher initial frame rate
   if (config.pixel_format == PIXFORMAT_JPEG) {
-    s->set_framesize(s, FRAMESIZE_QVGA);
+    s->set_framesize(s, FRAMESIZE_QVGA);  // 320x240. VGA gave ~1 FPS and quality 10 gave ~7 FPS on this WiFi link
+    s->set_quality(s, 18);                // 18 gave ~45 FPS; lower number = better quality but bigger frames
+    s->set_aec2(s, 1);                   // better auto-exposure in dim light
   }
 
 #if defined(CAMERA_MODEL_M5STACK_WIDE) || defined(CAMERA_MODEL_M5STACK_ESP32CAM)
@@ -123,9 +125,9 @@ void setup() {
     }
   }
 
-  WiFi.begin(ssid, password);
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(ssid, strlen(password) ? password : nullptr);
   WiFi.setSleep(false);
-
   Serial.print("WiFi connecting");
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
@@ -144,7 +146,26 @@ void setup() {
   Serial.println(":81/stream'");
 }
 
+extern volatile uint32_t diag_frames, diag_bytes, diag_capture_us, diag_send_us, diag_max_send_us, diag_capture_fail, diag_send_fail;
+
 void loop() {
-  // Do nothing. Everything is done in another task by the web server
-  delay(10000);
+  // Diagnostics: one line per second so you can see where the bottleneck is
+  delay(1000);
+
+  uint32_t frames = diag_frames, bytes = diag_bytes;
+  uint32_t cap = diag_capture_us, snd = diag_send_us, maxsnd = diag_max_send_us;
+  uint32_t capFail = diag_capture_fail, sndFail = diag_send_fail;
+  diag_frames = diag_bytes = diag_capture_us = diag_send_us = diag_max_send_us = 0;
+
+  bool up = WiFi.status() == WL_CONNECTED;
+  Serial.printf("[DIAG] wifi=%s rssi=%ddBm ch=%d | fps=%u size=%uB/frame throughput=%.0fkbps | capture=%.1fms send=%.1fms maxsend=%.0fms | fails cap=%u send=%u | heap=%u psram=%u uptime=%lus\n",
+                up ? "UP" : "DOWN", up ? WiFi.RSSI() : 0, up ? WiFi.channel() : 0,
+                frames, frames ? bytes / frames : 0, bytes * 8.0 / 1000.0,
+                frames ? cap / 1000.0 / frames : 0.0, frames ? snd / 1000.0 / frames : 0.0, maxsnd / 1000.0,
+                capFail, sndFail, ESP.getFreeHeap(), ESP.getFreePsram(), millis() / 1000);
+
+  if (!up) {
+    Serial.println("[DIAG] WiFi lost, reconnecting...");
+    WiFi.reconnect();
+  }
 }

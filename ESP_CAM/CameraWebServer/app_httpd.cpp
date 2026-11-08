@@ -209,6 +209,15 @@ static esp_err_t capture_handler(httpd_req_t *req) {
   return res;
 }
 
+// ---- Diagnostics counters (read + reset once per second from loop() in the .ino) ----
+volatile uint32_t diag_frames = 0;
+volatile uint32_t diag_bytes = 0;
+volatile uint32_t diag_capture_us = 0;   // total time waiting for camera frame
+volatile uint32_t diag_send_us = 0;      // total time pushing frame over WiFi/TCP
+volatile uint32_t diag_max_send_us = 0;  // worst single frame send time
+volatile uint32_t diag_capture_fail = 0;
+volatile uint32_t diag_send_fail = 0;
+
 static esp_err_t stream_handler(httpd_req_t *req) {
   camera_fb_t *fb = NULL;
   struct timeval _timestamp;
@@ -236,9 +245,12 @@ static esp_err_t stream_handler(httpd_req_t *req) {
 #endif
 
   while (true) {
+    int64_t d_cap_start = esp_timer_get_time();
     fb = esp_camera_fb_get();
+    diag_capture_us += (uint32_t)(esp_timer_get_time() - d_cap_start);
     if (!fb) {
       log_e("Camera capture failed");
+      diag_capture_fail++;
       res = ESP_FAIL;
     } else {
       _timestamp.tv_sec = fb->timestamp.tv_sec;
@@ -256,6 +268,7 @@ static esp_err_t stream_handler(httpd_req_t *req) {
         _jpg_buf = fb->buf;
       }
     }
+    int64_t d_send_start = esp_timer_get_time();
     if (res == ESP_OK) {
       res = httpd_resp_send_chunk(req, _STREAM_BOUNDARY, strlen(_STREAM_BOUNDARY));
     }
@@ -265,6 +278,17 @@ static esp_err_t stream_handler(httpd_req_t *req) {
     }
     if (res == ESP_OK) {
       res = httpd_resp_send_chunk(req, (const char *)_jpg_buf, _jpg_buf_len);
+    }
+    {
+      uint32_t d_send = (uint32_t)(esp_timer_get_time() - d_send_start);
+      diag_send_us += d_send;
+      if (d_send > diag_max_send_us) diag_max_send_us = d_send;
+      if (res == ESP_OK) {
+        diag_frames++;
+        diag_bytes += (uint32_t)_jpg_buf_len;
+      } else {
+        diag_send_fail++;
+      }
     }
     if (fb) {
       esp_camera_fb_return(fb);
@@ -838,6 +862,10 @@ void startCameraServer() {
 
   config.server_port += 1;
   config.ctrl_port += 1;
+  // Drop dead/stalled viewers quickly so a new viewer can connect (stream server serves one at a time)
+  config.send_wait_timeout = 3;
+  config.recv_wait_timeout = 3;
+  config.lru_purge_enable = true;
   log_i("Starting stream server on port: '%u'", config.server_port);
   if (httpd_start(&stream_httpd, &config) == ESP_OK) {
     httpd_register_uri_handler(stream_httpd, &stream_uri);

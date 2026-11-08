@@ -39,7 +39,7 @@ class ESP32Camera:
                 self.response = session.get(
                     self.url,
                     stream=True,
-                    timeout=(3, 3)
+                    timeout=(5, 8)
                 )
 
                 self.response.raise_for_status()
@@ -100,7 +100,7 @@ class ESP32Camera:
                     self.reconnects += 1
                     print(f"Stream stalled: {error}")
                     print("Reconnecting...")
-                    time.sleep(1)
+                    time.sleep(3)  # give the camera time to drop the old connection
 
             finally:
                 if self.response is not None:
