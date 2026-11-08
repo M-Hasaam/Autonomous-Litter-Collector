@@ -5,6 +5,7 @@ Frame format: A5 5A C3 3C | uint32 length (little-endian) | JPEG bytes
 
 Usage:  py camera_serial.py [COM11] [baud]          wired, USB cable
         py camera_serial.py tcp:192.168.4.1:8080    wireless, through the ESP32 WiFi bridge
+Add  --rotate ccw|cw|180  if the camera is mounted sideways or upside down (default: no rotation).
 Keys in the window:  q = quit,  s = save the current frame as a JPEG into ESP_CAM/captures/
 """
 import socket
@@ -17,12 +18,29 @@ import cv2
 import numpy as np
 import serial
 
-PORT = sys.argv[1] if len(sys.argv) > 1 else "COM11"
-BAUD = int(sys.argv[2]) if len(sys.argv) > 2 else 921_600
+# Optional "--rotate none|ccw|cw|180" (default none: the camera is mounted upright).
+_ROTATIONS = {"none": None, "ccw": cv2.ROTATE_90_COUNTERCLOCKWISE, "cw": cv2.ROTATE_90_CLOCKWISE, "180": cv2.ROTATE_180}
+_argv = sys.argv[1:]
+ROTATE = None
+if "--rotate" in _argv:
+    _i = _argv.index("--rotate")
+    ROTATE = _ROTATIONS[_argv[_i + 1]]
+    del _argv[_i:_i + 2]
+
+PORT = _argv[0] if len(_argv) > 0 else "COM11"
+BAUD = int(_argv[1]) if len(_argv) > 1 else 921_600
 MAGIC = b"\xa5\x5a\xc3\x3c"
 MAX_FRAME = 300_000
 CAPTURE_DIR = Path(__file__).resolve().parent.parent / "captures"
-ROTATE = cv2.ROTATE_90_COUNTERCLOCKWISE  # same orientation as camera_test.py; set to None to disable
+WINDOW = "ESP32-CAM"
+
+
+def window_closed(name):
+    """True once the window has been closed with the X button. Only call it after the first imshow()."""
+    try:
+        return cv2.getWindowProperty(name, cv2.WND_PROP_VISIBLE) < 1
+    except cv2.error:
+        return True
 
 
 class TcpSource:
@@ -74,6 +92,7 @@ def main():
     frame_time = 0.0
     last_jpeg = None
     saved = 0
+    window_opened = False
 
     try:
         while True:
@@ -129,9 +148,10 @@ def main():
                 age_ms = (now - frame_time) * 1000
                 cv2.putText(shown, f"FPS: {fps:.1f}", (10, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
                 cv2.putText(shown, f"Read age: {age_ms:.0f} ms", (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
-                cv2.imshow("ESP32-CAM (USB)", shown)
+                cv2.imshow(WINDOW, shown)
+                window_opened = True
             key = cv2.waitKey(1) & 0xFF
-            if key == ord("q"):
+            if key == ord("q") or (window_opened and window_closed(WINDOW)):  # q key or the X button
                 break
             if key == ord("s") and last_jpeg is not None:
                 # Save the camera's exact JPEG (unrotated) - ideal for collecting YOLO training images

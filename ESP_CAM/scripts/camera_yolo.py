@@ -26,6 +26,17 @@ from ai_edge_litert.interpreter import Interpreter
 ROOT = Path(__file__).resolve().parents[2]
 MAGIC = b"\xa5\x5a\xc3\x3c"
 MAX_FRAME = 300_000
+WINDOW = "ESP32-CAM + YOLO (app model)"
+
+
+def window_closed(name):
+    """True once the window has been closed with the X button. Only call it after the first imshow()."""
+    try:
+        return cv2.getWindowProperty(name, cv2.WND_PROP_VISIBLE) < 1
+    except cv2.error:
+        return True
+
+
 ROTATIONS = {
     "none": None,
     "ccw": cv2.ROTATE_90_COUNTERCLOCKWISE,  # same as camera_serial.py
@@ -190,7 +201,9 @@ def main():
     ap.add_argument("--conf", type=float, default=0.25, help="confidence threshold (the app uses 0.25)")
     ap.add_argument("--iou", type=float, default=0.45)
     ap.add_argument("--threads", type=int, default=4)
-    ap.add_argument("--rotate", choices=ROTATIONS, default="ccw", help="make the image upright before detection")
+    ap.add_argument("--rotate", choices=ROTATIONS, default="none",
+                    help="turn the image upright before detection (default none: camera mounted upright; "
+                         "use ccw or cw if it is mounted sideways)")
     ap.add_argument("--headless", action="store_true", help="no window: run for --seconds and print a summary")
     ap.add_argument("--seconds", type=int, default=30)
     args = ap.parse_args()
@@ -203,6 +216,7 @@ def main():
     capture_dir = ROOT / "ESP_CAM" / "captures"
     seen = 0
     shown = None
+    window_opened = False
     infer_times, class_counter, detect_frames = [], Counter(), 0
     t_start = last_report = time.perf_counter()
     last_seen_count, yolo_fps, last_grab, grab_fps, infer_ms = 0, 0.0, 0, 0.0, 0.0
@@ -211,6 +225,8 @@ def main():
             jpeg, count = grabber.latest()
             if jpeg is None or count == seen:  # wait for a new frame
                 if cv2.waitKey(1) & 0xFF == ord("q") and not args.headless:
+                    break
+                if window_opened and window_closed(WINDOW):  # closed with the X button
                     break
                 time.sleep(0.002)
                 if args.headless and time.perf_counter() - t_start > args.seconds:
@@ -241,9 +257,10 @@ def main():
             if not args.headless:
                 shown = frame.copy()
                 draw(shown, dets, yolo_fps, infer_ms, grab_fps)
-                cv2.imshow("ESP32-CAM + YOLO (app model)", shown)
+                cv2.imshow(WINDOW, shown)
+                window_opened = True
                 key = cv2.waitKey(1) & 0xFF
-                if key == ord("q"):
+                if key == ord("q") or window_closed(WINDOW):  # q key or the X button
                     break
                 if key == ord("s"):
                     capture_dir.mkdir(exist_ok=True)
