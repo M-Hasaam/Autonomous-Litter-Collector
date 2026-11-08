@@ -29,7 +29,7 @@ const char *ap_password = "12345678";  // at least 8 characters
 // Frame format: A5 5A C3 3C | uint32 length (little-endian) | JPEG bytes
 // ===========================
 #define USE_SERIAL_STREAM 1
-#define SERIAL_BAUD 2000000
+#define SERIAL_BAUD 3000000
 #define SERIAL_FRAMESIZE FRAMESIZE_VGA   // VGA 640x480 matches the 640 input of the YOLO model (QVGA 320x240 is 4x faster)
 #define SERIAL_QUALITY 10                // lower number = better quality, bigger frames (10 is high quality)
 
