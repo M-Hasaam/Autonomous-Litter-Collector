@@ -52,10 +52,15 @@ static int rxPin = RX_PIN;
 static uint32_t lastGoodMs = 0;  // last time a valid frame arrived
 static uint32_t lastScanMs = 0;
 
+// The UART hardware FIFO holds 128 bytes and the core raises the "FIFO full" interrupt at 120, leaving only
+// 8 bytes (~27 us at 3 Mbaud) for the ISR to react. Raising the interrupt earlier gives the ISR much more time.
+#define RX_FIFO_FULL_BYTES 32  // headroom 96 bytes = ~320 us at 3 Mbaud
+
 static void startCamUart(int pin) {
   Serial2.end();
   Serial2.setRxBufferSize(32768);
   Serial2.begin(curBaud, SERIAL_8N1, pin, TX_PIN);
+  Serial2.setRxFIFOFull(RX_FIFO_FULL_BYTES);  // must be set after begin(): end() resets it
   Serial2.onReceiveError([](hardwareSerial_error_t e) {
     if ((int)e < 8) uartErr[(int)e]++;
   });
