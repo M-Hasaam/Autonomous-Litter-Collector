@@ -24,6 +24,14 @@ const char *ap_password = "12345678";  // at least 8 characters
 #define AP_CHANNEL 1                   // 2.4 GHz channel 1..11 (12-13 are rejected by the ESP default region). Channel did not matter much in tests.
 
 // ===========================
+// Picture settings for WiFi streaming (written for a healthy ESP32-CAM; tuned for a 640x640 YOLO model).
+// VGA 640x480 is the native fit for a 640 input. If the stream stutters, lower the quality (raise the number)
+// or use FRAMESIZE_QVGA (320x240, about 4x less data). Both can also be changed live on the web page.
+// ===========================
+#define WIFI_FRAMESIZE FRAMESIZE_VGA
+#define WIFI_QUALITY 12  // 10..63, lower number = better quality and bigger frames (10 is high quality)
+
+// ===========================
 // Optional: Static IP configuration
 // Set USE_STATIC_IP to true if you want a fixed IP (e.g. 192.168.137.30 for camera_test.py)
 // ===========================
@@ -94,10 +102,19 @@ void setup() {
 #endif
 
   // camera init
-  esp_err_t err = esp_camera_init(&config);
+  esp_err_t err = ESP_FAIL;
+  for (int attempt = 1; attempt <= 3 && err != ESP_OK; attempt++) {
+    err = esp_camera_init(&config);
+    if (err != ESP_OK) {
+      Serial.printf("Camera init failed (attempt %d) with error 0x%x\n", attempt, err);
+      esp_camera_deinit();
+      delay(500);
+    }
+  }
   if (err != ESP_OK) {
-    Serial.printf("Camera init failed with error 0x%x\n", err);
-    return;
+    Serial.println("Camera init failed, restarting board...");
+    delay(1000);
+    ESP.restart();
   }
   Serial.println("Camera init succeeded!");
 
@@ -108,11 +125,20 @@ void setup() {
     s->set_brightness(s, 1);   // up the brightness just a bit
     s->set_saturation(s, -2);  // lower the saturation
   }
-  // drop down frame size for higher initial frame rate
   if (config.pixel_format == PIXFORMAT_JPEG) {
-    s->set_framesize(s, FRAMESIZE_QVGA);  // 320x240. VGA gave ~1 FPS and quality 10 gave ~7 FPS on this WiFi link
-    s->set_quality(s, 18);                // 18 gave ~45 FPS; lower number = better quality but bigger frames
-    s->set_aec2(s, 1);                   // better auto-exposure in dim light
+    s->set_framesize(s, WIFI_FRAMESIZE);
+    s->set_quality(s, WIFI_QUALITY);
+    s->set_aec2(s, 1);           // better auto-exposure in dim light
+    // Image-quality tuning for object detection (all supported by the OV2640)
+    s->set_whitebal(s, 1);       // automatic white balance
+    s->set_awb_gain(s, 1);
+    s->set_exposure_ctrl(s, 1);  // automatic exposure
+    s->set_gain_ctrl(s, 1);      // automatic gain
+    s->set_lenc(s, 1);           // lens shading correction (brightens the dark corners)
+    s->set_bpc(s, 1);            // black pixel correction
+    s->set_wpc(s, 1);            // white pixel correction
+    s->set_raw_gma(s, 1);        // gamma correction
+    s->set_dcw(s, 1);            // downsize-crop-window, cleaner scaling
   }
 
 #if defined(CAMERA_MODEL_M5STACK_WIDE) || defined(CAMERA_MODEL_M5STACK_ESP32CAM)
