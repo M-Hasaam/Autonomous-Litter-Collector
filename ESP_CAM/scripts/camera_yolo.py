@@ -14,6 +14,7 @@ Keys in the window:  q = quit,  s = save the current annotated frame into ESP_CA
 import argparse
 import socket
 import struct
+import sys
 import threading
 import time
 from collections import Counter
@@ -22,6 +23,8 @@ from pathlib import Path
 import cv2
 import numpy as np
 from ai_edge_litert.interpreter import Interpreter
+
+import connection_help
 
 ROOT = Path(__file__).resolve().parents[2]
 MAGIC = b"\xa5\x5a\xc3\x3c"
@@ -52,7 +55,7 @@ class Source:
         self.ser = None
         if spec.startswith("tcp:"):
             _, host, port = spec.split(":")
-            self.sock = socket.create_connection((host, int(port)), timeout=10)
+            self.sock = socket.create_connection((host, int(port)), timeout=5)
             self.sock.settimeout(0.05)
         else:
             import serial
@@ -210,13 +213,24 @@ def main():
 
     yolo = Yolo(args.model, args.labels, args.conf, args.iou, args.threads)
     print(f"Model input {yolo.size_w}x{yolo.size_h}, {len(yolo.labels)} classes. Source {args.source}")
-    grabber = FrameGrabber(Source(args.source, args.baud))
+    print("Connecting to the camera ...")
+    try:
+        source = Source(args.source, args.baud)
+    except OSError as exc:  # network errors and pyserial's SerialException are both OSError
+        if args.source.startswith("tcp:"):
+            _, host, port = args.source.split(":")
+            print("\n" + connection_help.tcp_connect_message(exc, host, int(port)), file=sys.stderr)
+        else:
+            print("\n" + connection_help.serial_open_message(exc, args.source), file=sys.stderr)
+        sys.exit(1)
+    grabber = FrameGrabber(source)
     grabber.start()
 
     capture_dir = ROOT / "ESP_CAM" / "captures"
     seen = 0
     shown = None
     window_opened = False
+    warned_no_frames = False
     infer_times, class_counter, detect_frames = [], Counter(), 0
     t_start = last_report = time.perf_counter()
     last_seen_count, yolo_fps, last_grab, grab_fps, infer_ms = 0, 0.0, 0, 0.0, 0.0
@@ -228,6 +242,9 @@ def main():
                     break
                 if window_opened and window_closed(WINDOW):  # closed with the X button
                     break
+                if count == 0 and not warned_no_frames and time.perf_counter() - t_start > 8:
+                    print("\n" + connection_help.NO_FRAMES_MESSAGE)
+                    warned_no_frames = True
                 time.sleep(0.002)
                 if args.headless and time.perf_counter() - t_start > args.seconds:
                     break
@@ -279,7 +296,7 @@ def main():
     n = len(infer_times)
     print("\n=== summary ===")
     if grabber.error:
-        print(f"stream stopped: {grabber.error}")
+        print(connection_help.connection_lost_message(grabber.error, args.source.startswith("tcp:")))
     if n:
         print(f"frames processed {n} in {total:.0f} s ({n / total:.1f}/s); camera delivered {grabber.count}, bad {grabber.bad}")
         print(f"inference: mean {np.mean(infer_times):.0f} ms, median {np.median(infer_times):.0f} ms, p95 {np.percentile(infer_times, 95):.0f} ms")

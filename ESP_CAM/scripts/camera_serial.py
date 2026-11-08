@@ -18,6 +18,8 @@ import cv2
 import numpy as np
 import serial
 
+import connection_help
+
 # Optional "--rotate none|ccw|cw|180" (default none: the camera is mounted upright).
 _ROTATIONS = {"none": None, "ccw": cv2.ROTATE_90_COUNTERCLOCKWISE, "cw": cv2.ROTATE_90_CLOCKWISE, "180": cv2.ROTATE_180}
 _argv = sys.argv[1:]
@@ -47,7 +49,7 @@ class TcpSource:
     """Same read()/in_waiting/close() surface as a serial port, over a TCP socket."""
 
     def __init__(self, host, port):
-        self.sock = socket.create_connection((host, port), timeout=10)
+        self.sock = socket.create_connection((host, port), timeout=5)
         self.sock.settimeout(0.05)
         self.in_waiting = 0
 
@@ -80,8 +82,17 @@ def open_port():
 
 
 def main():
-    ser = open_port()
-    print(f"Reading {PORT} at {BAUD} baud. If nothing appears, press RESET on the board once.")
+    print("Connecting to the camera ...")
+    try:
+        ser = open_port()
+    except OSError as exc:  # network errors and pyserial's SerialException are both OSError
+        if PORT.startswith("tcp:"):
+            _, host, port = PORT.split(":")
+            print("\n" + connection_help.tcp_connect_message(exc, host, int(port)), file=sys.stderr)
+        else:
+            print("\n" + connection_help.serial_open_message(exc, PORT), file=sys.stderr)
+        sys.exit(1)
+    print(f"Connected to {PORT}. If no picture appears, press RESET on the board once.")
     buf = bytearray()
     frames = 0
     bad = 0
@@ -93,6 +104,8 @@ def main():
     last_jpeg = None
     saved = 0
     window_opened = False
+    start_time = time.perf_counter()
+    warned_no_frames = False
 
     try:
         while True:
@@ -137,6 +150,9 @@ def main():
                 frames += 1
 
             now = time.perf_counter()
+            if frames == 0 and not warned_no_frames and now - start_time > 8:
+                print("\n" + connection_help.NO_FRAMES_MESSAGE)
+                warned_no_frames = True
             if now - last_report >= 1:
                 fps = (frames - last_count) / (now - last_report)
                 print(f"FPS: {fps:.1f} | Frames: {frames} | Bad frames: {bad}")
@@ -162,6 +178,8 @@ def main():
                 print(f"Saved {path}")
     except KeyboardInterrupt:
         print("\nStopped using Ctrl+C")
+    except OSError as exc:  # connection reset, cable unplugged, ...
+        print("\n" + connection_help.connection_lost_message(exc, PORT.startswith("tcp:")), file=sys.stderr)
     finally:
         ser.close()
         cv2.destroyAllWindows()
