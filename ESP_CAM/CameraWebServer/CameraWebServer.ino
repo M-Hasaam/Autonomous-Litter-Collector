@@ -29,7 +29,7 @@ const char *ap_password = "12345678";  // at least 8 characters
 // Frame format: A5 5A C3 3C | uint32 length (little-endian) | JPEG bytes
 // ===========================
 #define USE_SERIAL_STREAM 1
-#define SERIAL_BAUD 460800
+#define SERIAL_BAUD 921600
 #define SERIAL_FRAMESIZE FRAMESIZE_QVGA  // QVGA 320x240; try FRAMESIZE_VGA (640x480) for a bigger picture, fewer FPS
 #define SERIAL_QUALITY 12                // lower number = better quality, bigger frames
 

@@ -14,7 +14,7 @@
 const char *AP_SSID = "ESP32-BRIDGE";
 const char *AP_PASS = "12345678";  // at least 8 characters
 #define AP_CHANNEL 1
-#define CAM_BAUD 460800
+#define CAM_BAUD 921600
 #define RX_PIN 16  // connect to ESP32-CAM U0T
 #define TX_PIN 17  // not used
 #define MAX_FRAME 60000
