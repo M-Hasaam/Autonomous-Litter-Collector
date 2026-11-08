@@ -30,8 +30,8 @@ const char *ap_password = "12345678";  // at least 8 characters
 // ===========================
 #define USE_SERIAL_STREAM 1
 #define SERIAL_BAUD 2000000
-#define SERIAL_FRAMESIZE FRAMESIZE_QVGA  // QVGA 320x240; try FRAMESIZE_VGA (640x480) for a bigger picture, fewer FPS
-#define SERIAL_QUALITY 15                // lower number = better quality, bigger frames
+#define SERIAL_FRAMESIZE FRAMESIZE_VGA   // VGA 640x480 matches the 640 input of the YOLO model (QVGA 320x240 is 4x faster)
+#define SERIAL_QUALITY 10                // lower number = better quality, bigger frames (10 is high quality)
 
 // ===========================
 // Optional: Static IP configuration
@@ -137,6 +137,18 @@ void setup() {
     s->set_quality(s, 18);                // 18 gave ~45 FPS; lower number = better quality but bigger frames
 #endif
     s->set_aec2(s, 1);                    // better auto-exposure in dim light
+#if USE_SERIAL_STREAM
+    // Image-quality tuning for object detection (all supported by the OV2640)
+    s->set_whitebal(s, 1);       // automatic white balance
+    s->set_awb_gain(s, 1);
+    s->set_exposure_ctrl(s, 1);  // automatic exposure
+    s->set_gain_ctrl(s, 1);      // automatic gain
+    s->set_lenc(s, 1);           // lens shading correction (brightens the dark corners)
+    s->set_bpc(s, 1);            // black pixel correction
+    s->set_wpc(s, 1);            // white pixel correction
+    s->set_raw_gma(s, 1);        // gamma correction
+    s->set_dcw(s, 1);            // downsize-crop-window, cleaner scaling
+#endif
   }
 
 #if defined(CAMERA_MODEL_M5STACK_WIDE) || defined(CAMERA_MODEL_M5STACK_ESP32CAM)

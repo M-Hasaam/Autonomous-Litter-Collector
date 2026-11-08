@@ -5,12 +5,13 @@ Frame format: A5 5A C3 3C | uint32 length (little-endian) | JPEG bytes
 
 Usage:  py camera_serial.py [COM11] [baud]          wired, USB cable
         py camera_serial.py tcp:192.168.4.1:8080    wireless, through the ESP32 WiFi bridge
-Press q in the window to quit.
+Keys in the window:  q = quit,  s = save the current frame as a JPEG into ESP_CAM/captures/
 """
 import socket
 import sys
 import struct
 import time
+from pathlib import Path
 
 import cv2
 import numpy as np
@@ -20,6 +21,7 @@ PORT = sys.argv[1] if len(sys.argv) > 1 else "COM11"
 BAUD = int(sys.argv[2]) if len(sys.argv) > 2 else 921_600
 MAGIC = b"\xa5\x5a\xc3\x3c"
 MAX_FRAME = 300_000
+CAPTURE_DIR = Path(__file__).resolve().parent.parent / "captures"
 ROTATE = cv2.ROTATE_90_COUNTERCLOCKWISE  # same orientation as camera_test.py; set to None to disable
 
 
@@ -70,6 +72,8 @@ def main():
     fps = 0.0
     frame = None
     frame_time = 0.0
+    last_jpeg = None
+    saved = 0
 
     try:
         while True:
@@ -109,6 +113,7 @@ def main():
                 if ROTATE is not None:
                     img = cv2.rotate(img, ROTATE)
                 frame = img
+                last_jpeg = jpeg
                 frame_time = time.perf_counter()
                 frames += 1
 
@@ -125,8 +130,16 @@ def main():
                 cv2.putText(shown, f"FPS: {fps:.1f}", (10, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
                 cv2.putText(shown, f"Read age: {age_ms:.0f} ms", (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
                 cv2.imshow("ESP32-CAM (USB)", shown)
-            if cv2.waitKey(1) & 0xFF == ord("q"):
+            key = cv2.waitKey(1) & 0xFF
+            if key == ord("q"):
                 break
+            if key == ord("s") and last_jpeg is not None:
+                # Save the camera's exact JPEG (unrotated) - ideal for collecting YOLO training images
+                CAPTURE_DIR.mkdir(exist_ok=True)
+                path = CAPTURE_DIR / f"frame_{time.strftime('%Y%m%d_%H%M%S')}_{saved:03d}.jpg"
+                path.write_bytes(last_jpeg)
+                saved += 1
+                print(f"Saved {path}")
     except KeyboardInterrupt:
         print("\nStopped using Ctrl+C")
     finally:

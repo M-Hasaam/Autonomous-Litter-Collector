@@ -36,3 +36,4 @@ app/src/main/assets/*.new
 
 # Arduino/ESP32 build output
 ESP_CAM/**/build/
+ESP_CAM/captures/
