@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include "esp_camera.h"
 #include <WiFi.h>
+#include "esp_wifi.h"
 
 // ===========================
 // Select camera model in board_config.h
@@ -12,6 +13,15 @@
 // ===========================
 const char *ssid = "SEAL123";
 const char *password = "12345678";
+
+// ===========================
+// SoftAP mode: the ESP32-CAM hosts its own WiFi network (no router/hotspot needed).
+// Set USE_SOFTAP to 0 to go back to joining the network above.
+// ===========================
+#define USE_SOFTAP 1
+const char *ap_ssid = "ESP32-CAM-LV";
+const char *ap_password = "12345678";  // at least 8 characters
+#define AP_CHANNEL 1                   // 2.4 GHz channel 1..11 (12-13 are rejected by the ESP default region). Channel did not matter much in tests.
 
 // ===========================
 // Optional: Static IP configuration
@@ -119,6 +129,17 @@ void setup() {
   setupLedFlash();
 #endif
 
+#if USE_SOFTAP
+  // The camera creates its own WiFi network. Join it from the laptop; stream is at 192.168.4.1
+  WiFi.mode(WIFI_AP);
+  WiFi.softAPConfig(IPAddress(192, 168, 4, 1), IPAddress(192, 168, 4, 1), IPAddress(255, 255, 255, 0));
+  if (!WiFi.softAP(ap_ssid, ap_password, AP_CHANNEL, 0, 2)) {
+    Serial.println("SoftAP start FAILED");
+  }
+  WiFi.setSleep(false);
+  Serial.printf("SoftAP '%s' started on channel %d\n", ap_ssid, AP_CHANNEL);
+  IPAddress camIP = WiFi.softAPIP();
+#else
   if (USE_STATIC_IP) {
     if (!WiFi.config(static_ip, gateway, subnet, primaryDNS)) {
       Serial.println("Static IP configuration failed, using DHCP");
@@ -135,14 +156,16 @@ void setup() {
   }
   Serial.println("");
   Serial.println("WiFi connected");
+  IPAddress camIP = WiFi.localIP();
+#endif
 
   startCameraServer();
 
   Serial.print("Camera Ready! Use 'http://");
-  Serial.print(WiFi.localIP());
+  Serial.print(camIP);
   Serial.println("' to connect");
   Serial.print("Stream URL: 'http://");
-  Serial.print(WiFi.localIP());
+  Serial.print(camIP);
   Serial.println(":81/stream'");
 }
 
@@ -157,9 +180,19 @@ void loop() {
   uint32_t capFail = diag_capture_fail, sndFail = diag_send_fail;
   diag_frames = diag_bytes = diag_capture_us = diag_send_us = diag_max_send_us = 0;
 
+#if USE_SOFTAP
+  bool up = true;
+  int rssi = 0;
+  int clients = WiFi.softAPgetStationNum();
+  wifi_sta_list_t staList;
+  if (esp_wifi_ap_get_sta_list(&staList) == ESP_OK && staList.num > 0) rssi = staList.sta[0].rssi;
+  Serial.printf("[AP clients=%d] ", clients);
+#else
   bool up = WiFi.status() == WL_CONNECTED;
+  int rssi = up ? WiFi.RSSI() : 0;
+#endif
   Serial.printf("[DIAG] wifi=%s rssi=%ddBm ch=%d | fps=%u size=%uB/frame throughput=%.0fkbps | capture=%.1fms send=%.1fms maxsend=%.0fms | fails cap=%u send=%u | heap=%u psram=%u uptime=%lus\n",
-                up ? "UP" : "DOWN", up ? WiFi.RSSI() : 0, up ? WiFi.channel() : 0,
+                up ? "UP" : "DOWN", rssi, up ? WiFi.channel() : 0,
                 frames, frames ? bytes / frames : 0, bytes * 8.0 / 1000.0,
                 frames ? cap / 1000.0 / frames : 0.0, frames ? snd / 1000.0 / frames : 0.0, maxsnd / 1000.0,
                 capFail, sndFail, ESP.getFreeHeap(), ESP.getFreePsram(), millis() / 1000);

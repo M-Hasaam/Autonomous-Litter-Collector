@@ -130,7 +130,7 @@ class ESP32Camera:
             self.thread.join(timeout=4)
 
 
-url = "http://192.168.137.30:81/stream"
+url = "http://192.168.4.1:81/stream"  # ESP32-CAM SoftAP address (join WiFi "ESP32-CAM-LV" first)
 
 camera = ESP32Camera(url)
 camera.start()

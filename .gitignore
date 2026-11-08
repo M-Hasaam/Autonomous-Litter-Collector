@@ -33,3 +33,6 @@ training/my_dataset.yaml
 # Export staging/backups. The app's litter_detector.tflite and labels.txt are NOT ignored.
 app/src/main/assets/*.bak
 app/src/main/assets/*.new
+
+# Arduino/ESP32 build output
+ESP_CAM/CameraWebServer/build/
