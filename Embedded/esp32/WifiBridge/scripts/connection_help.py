@@ -96,6 +96,6 @@ def connection_lost_message(exc, via_wifi):
 
 NO_FRAMES_MESSAGE = (
     "Connected, but no camera frames are arriving yet.\n"
-    "-> Check that the ESP32-CAM is powered and that its U0T wire goes to pin G16 of the bridge "
+    "-> Check that the ESP32-CAM is powered and that its U0T wire goes to pin G34 of the bridge "
     "(and that the grounds are joined). Still waiting..."
 )

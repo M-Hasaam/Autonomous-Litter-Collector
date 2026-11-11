@@ -4,7 +4,7 @@ Example:
     python train.py my_dataset.yaml --epochs 100
     python train.py my_dataset.yaml --epochs 100 --export-to-app
 
-Results are saved under training/runs/<name>/ (weights in runs/<name>/weights/best.pt).
+Results are saved under Training/runs/<name>/ (weights in runs/<name>/weights/best.pt).
 With --export-to-app the Android model is replaced ONLY after training, validation and
 export all succeed; otherwise the model currently in the app is left untouched.
 """
@@ -81,7 +81,7 @@ def main() -> None:
     parser.add_argument("--imgsz", type=int, default=640)
     parser.add_argument("--batch", type=int, default=16, help="Lower this if you run out of memory.")
     parser.add_argument("--device", default=None, help="e.g. 0 for the first GPU, or cpu.")
-    parser.add_argument("--name", default="litter_yolo11n", help="Run folder name under training/runs/.")
+    parser.add_argument("--name", default="litter_yolo11n", help="Run folder name under Training/runs/.")
     parser.add_argument("--export-to-app", action="store_true",
                         help="After successful train+val, export best.pt and replace the Android app model.")
     args = parser.parse_args()

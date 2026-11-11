@@ -33,7 +33,7 @@ const char *ap_password = "12345678";  // at least 8 characters
 
 // ===========================
 // Wired mode: send JPEG frames over the USB cable at high baud (no WiFi at all).
-// View with ESP_CAM/scripts/camera_serial.py. Set USE_SERIAL_STREAM to 0 for the WiFi web server.
+// View with Embedded/esp32/WifiBridge/scripts/camera_serial.py. Set USE_SERIAL_STREAM to 0 for the WiFi web server.
 // Frame format: A5 5A C3 3C | uint32 length (little-endian) | JPEG bytes
 // ===========================
 #define USE_SERIAL_STREAM 1

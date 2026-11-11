@@ -6,7 +6,7 @@ Frame format: A5 5A C3 3C | uint32 length (little-endian) | JPEG bytes
 Usage:  py camera_serial.py [COM11] [baud]          wired, USB cable
         py camera_serial.py tcp:192.168.4.1:8080    wireless, through the ESP32 WiFi bridge
 Add  --rotate ccw|cw|180  if the camera is mounted sideways or upside down (default: no rotation).
-Keys in the window:  q = quit,  s = save the current frame as a JPEG into ESP_CAM/captures/
+Keys in the window:  q = quit,  s = save the current frame as a JPEG into Embedded/esp32-cam/captures/
 """
 import socket
 import sys
@@ -33,7 +33,7 @@ PORT = _argv[0] if len(_argv) > 0 else "COM11"
 BAUD = int(_argv[1]) if len(_argv) > 1 else 921_600
 MAGIC = b"\xa5\x5a\xc3\x3c"
 MAX_FRAME = 300_000
-CAPTURE_DIR = Path(__file__).resolve().parent.parent / "captures"
+CAPTURE_DIR = Path(__file__).resolve().parents[3] / "esp32-cam" / "captures"
 WINDOW = "ESP32-CAM"
 
 

@@ -8,7 +8,7 @@ cup, ...). It is **not** a litter detector. Litter classes (`crumpled_paper`, `c
 
 ## 1. Setup (once)
 
-Python 3.10 - 3.12 is recommended. From this `training/` folder:
+Python 3.10 - 3.12 is recommended. From this `Training/` folder:
 
 ```powershell
 python -m venv .venv
@@ -64,7 +64,7 @@ in the training set to judge real-world quality before putting a model in the ap
 
 ## 5. Export to the app
 
-The app loads two files from `app/src/main/assets/`: `litter_detector.tflite` and
+The app loads two files from `Mobile_app/app/src/main/assets/`: `litter_detector.tflite` and
 `labels.txt`. `export_model.py` produces both in the exact format the app decodes
 (float32, input `[1, S, S, 3]` RGB 0..1, output `[1, 4+classes, N]`, no built-in NMS).
 

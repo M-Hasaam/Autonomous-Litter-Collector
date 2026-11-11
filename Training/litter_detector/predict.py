@@ -4,7 +4,7 @@ Example:
     python predict.py --weights runs/litter_yolo11n/weights/best.pt --source photos/
     python predict.py --source some_image.jpg          # pretrained yolo11n.pt, general COCO classes
 
-Annotated images are written to training/predictions/<name>/.
+Annotated images are written to Training/predictions/<name>/.
 """
 import argparse
 import sys

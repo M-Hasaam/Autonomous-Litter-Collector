@@ -1,4 +1,4 @@
-"""Build the TEMPORARY 'yolo-temp' dataset from ESP_CAM/captures/ and boxes.json.
+"""Build the TEMPORARY 'yolo-temp' dataset from Embedded/esp32-cam/captures/ and boxes.json.
 
 The captures were saved by camera_yolo.py with its detection boxes, labels and header text drawn into the
 pixels. Training on them as-is would teach the model to look for green boxes, so the overlay is removed first
@@ -15,7 +15,7 @@ import cv2
 import numpy as np
 
 HERE = Path(__file__).resolve().parent
-CAPTURES = HERE.parent / "captures"
+CAPTURES = HERE.parents[1] / "Embedded" / "esp32-cam" / "captures"
 DATASET = HERE / "dataset"
 VAL_INDEXES = {3, 11, 16, 21}  # position in the sorted list: a top-down view and a near, a middle and a far ball
 

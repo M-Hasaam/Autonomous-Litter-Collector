@@ -9,7 +9,7 @@ Usage:
   py camera_yolo.py                              live window, stream from the ESP32 WiFi bridge
   py camera_yolo.py --source COM11 --baud 921600 stream over the USB cable instead
   py camera_yolo.py --headless --seconds 30      no window, print a summary (for automated tests)
-Keys in the window:  q = quit,  s = save the current annotated frame into ESP_CAM/captures/
+Keys in the window:  q = quit,  s = save the current annotated frame into Embedded/esp32-cam/captures/
 """
 import argparse
 import socket
@@ -25,7 +25,7 @@ import numpy as np
 
 import connection_help
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[4]
 MAGIC = b"\xa5\x5a\xc3\x3c"
 MAX_FRAME = 300_000
 WINDOW = "ESP32-CAM + YOLO (app model)"
@@ -199,8 +199,8 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--source", default="tcp:192.168.4.1:8080", help="tcp:HOST:PORT (bridge) or a COM port")
     ap.add_argument("--baud", type=int, default=921_600, help="only for a COM port source")
-    ap.add_argument("--model", default=str(ROOT / "app/src/main/assets/litter_detector.tflite"))
-    ap.add_argument("--labels", default=str(ROOT / "app/src/main/assets/labels.txt"))
+    ap.add_argument("--model", default=str(ROOT / "Mobile_app/app/src/main/assets/litter_detector.tflite"))
+    ap.add_argument("--labels", default=str(ROOT / "Mobile_app/app/src/main/assets/labels.txt"))
     ap.add_argument("--conf", type=float, default=0.25, help="confidence threshold (the app uses 0.25)")
     ap.add_argument("--iou", type=float, default=0.45)
     ap.add_argument("--threads", type=int, default=4)
@@ -226,7 +226,7 @@ def main():
     grabber = FrameGrabber(source)
     grabber.start()
 
-    capture_dir = ROOT / "ESP_CAM" / "captures"
+    capture_dir = ROOT / "Embedded" / "esp32-cam" / "captures"
     seen = 0
     shown = None
     window_opened = False

@@ -1,15 +1,15 @@
 """Train YOLO11n on a paper-ball dataset downloaded from Roboflow Universe (YOLOv11 / YOLOv8 export), separately from
-yolo-temp. It does NOT touch the app's model (app/src/main/assets/litter_detector.tflite).
+yolo-temp. It does NOT touch the app's model (Mobile_app/app/src/main/assets/litter_detector.tflite).
 
 How to get the data (needs a free Roboflow login, so it cannot be done from a script here):
   1. Open the dataset page on universe.roboflow.com, check the licence, click "Download Dataset".
   2. Format "YOLOv11" (or YOLOv8), choose "download zip to computer".
-  3. Unzip it so that  ESP_CAM/roboflow_model/dataset/data.yaml  exists, then run fix_dataset.py (it repairs the export and writes dataset_fixed/).
+  3. Unzip it so that  Training/paperball_roboflow/dataset/data.yaml  exists, then run fix_dataset.py (it repairs the export and writes dataset_fixed/).
 
 Run (in an environment with ultralytics + torch + onnx):
   python train_roboflow.py [--epochs 25] [--batch 16] [--device cpu]
 Output: roboflow-paperball.pt and roboflow-paperball.onnx in this folder. Try it on the camera with:
-  py ESP_CAM/scripts/camera_distance.py --model ESP_CAM/roboflow_model/roboflow-paperball.onnx --rotate ccw
+  py Embedded/esp32/WifiBridge/scripts/camera_distance.py --model Training/paperball_roboflow/roboflow-paperball.onnx --rotate ccw
 """
 import argparse
 import shutil
@@ -19,7 +19,7 @@ from pathlib import Path
 import yaml
 
 HERE = Path(__file__).resolve().parent
-BASE_WEIGHTS = HERE.parent.parent / "training" / "yolo11n.pt"
+BASE_WEIGHTS = HERE.parent / "yolo11n.pt"
 IMAGE_SUFFIXES = {".jpg", ".jpeg", ".png", ".bmp", ".webp"}
 
 

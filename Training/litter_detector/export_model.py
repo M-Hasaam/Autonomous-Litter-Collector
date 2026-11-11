@@ -2,10 +2,10 @@
 
 Examples:
     python export_model.py                                  # export pretrained yolo11n.pt, don't touch the app
-    python export_model.py --install                        # ... and install into app/src/main/assets/
+    python export_model.py --install                        # ... and install into Mobile_app/app/src/main/assets/
     python export_model.py --weights runs/litter_yolo11n/weights/best.pt --install
 
-Output files (installed under app/src/main/assets/):
+Output files (installed under Mobile_app/app/src/main/assets/):
     litter_detector.tflite   float32, input [1, S, S, 3] RGB scaled 0..1, output [1, 4+nc, N]
     labels.txt               one class name per line, in class-index order
 
@@ -21,7 +21,7 @@ import tempfile
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-APP_ASSETS = HERE.parent / "app" / "src" / "main" / "assets"
+APP_ASSETS = HERE.parents[1] / "Mobile_app" / "app" / "src" / "main" / "assets"
 MODEL_NAME = "litter_detector.tflite"
 LABELS_NAME = "labels.txt"
 
@@ -140,7 +140,7 @@ def main() -> None:
     parser.add_argument("--imgsz", type=int, default=640,
                         help="Model input size. 640 is standard; 320 is ~4x faster on weak phones.")
     parser.add_argument("--install", action="store_true",
-                        help=f"Copy the result to app/src/main/assets/{MODEL_NAME} and {LABELS_NAME}.")
+                        help=f"Copy the result to Mobile_app/app/src/main/assets/{MODEL_NAME} and {LABELS_NAME}.")
     parser.add_argument("--out-dir", type=Path, default=None, help="Keep the exported files in this folder.")
     args = parser.parse_args()
     try:

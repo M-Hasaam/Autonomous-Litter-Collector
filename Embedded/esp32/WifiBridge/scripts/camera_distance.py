@@ -1,7 +1,7 @@
 """Detect paper balls with the temporary 'yolo-temp' model and estimate how far away they are (camera only).
 
-TEMPORARY test tool - it does not touch the app's model. The model is ESP_CAM/yolo_temp/yolo-temp.onnx
-(build it with ESP_CAM/yolo_temp/prepare_dataset.py + train_yolo_temp.py).
+TEMPORARY test tool - it does not touch the app's model. The model is Training/paperball_yolo_temp/yolo-temp.onnx
+(build it with Training/paperball_yolo_temp/prepare_dataset.py + train_yolo_temp.py).
 
 Two distance estimates are made from each detected box:
   * floor  : the lower the ball's bottom edge sits in the image, the closer it is (needs --calibrate once).
@@ -16,7 +16,7 @@ Usage:
   py camera_distance.py --source COM11                   live over a USB cable
   py camera_distance.py --calibrate                      place the ball at known distances, press SPACE each time
   py camera_distance.py --image a.jpg b.jpg --save-dir out   offline test on saved pictures
-Keys in the window: q = quit, s = save the clean (no drawing) frame into ESP_CAM/captures/ for training.
+Keys in the window: q = quit, s = save the clean (no drawing) frame into Embedded/esp32-cam/captures/ for training.
 """
 import argparse
 import json
@@ -33,11 +33,11 @@ import numpy as np
 import connection_help
 from camera_yolo import FrameGrabber, ROTATIONS, Source, window_closed
 
-ROOT = Path(__file__).resolve().parents[2]
-TEMP_DIR = ROOT / "ESP_CAM" / "yolo_temp"
+ROOT = Path(__file__).resolve().parents[4]
+TEMP_DIR = ROOT / "Training" / "paperball_yolo_temp"
 DEFAULT_MODEL = TEMP_DIR / "yolo-temp.onnx"
 CALIB_FILE = TEMP_DIR / "distance_calibration.json"
-CAPTURE_DIR = ROOT / "ESP_CAM" / "captures"
+CAPTURE_DIR = ROOT / "Embedded" / "esp32-cam" / "captures"
 WINDOW = "ESP32-CAM paper-ball distance (yolo-temp)"
 BIG_RATIO = 1.4  # a ball this much wider than the calibration ball (at the same distance) is "BIG"
 GREEN, ORANGE, RED, YELLOW = (0, 255, 0), (0, 165, 255), (0, 0, 255), (0, 255, 255)
@@ -354,7 +354,7 @@ def main():
     args = ap.parse_args()
 
     if not Path(args.model).is_file():
-        print(f"Model not found: {args.model}\nBuild it first: py ESP_CAM/yolo_temp/prepare_dataset.py, then "
+        print(f"Model not found: {args.model}\nBuild it first: py Training/paperball_yolo_temp/prepare_dataset.py, then "
               f"train_yolo_temp.py in an Ultralytics environment.", file=sys.stderr)
         sys.exit(1)
     detector = OnnxDetector(args.model, args.imgsz, args.conf, args.iou)

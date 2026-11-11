@@ -1,9 +1,9 @@
 """Fine-tune YOLO11n on the temporary paper-ball dataset and save it as yolo-temp.pt / yolo-temp.onnx.
 
 This is a throw-away model for testing distance estimation (camera_distance.py). It does NOT touch the app's model
-(app/src/main/assets/litter_detector.tflite) and does not use training/export_model.py.
+(Mobile_app/app/src/main/assets/litter_detector.tflite) and does not use Training/export_model.py.
 
-Needs the Ultralytics environment (see training/requirements.txt, at least: ultralytics torch onnx).
+Needs the Ultralytics environment (see Training/requirements.txt, at least: ultralytics torch onnx).
 Run:  python train_yolo_temp.py [--epochs 80]
 """
 import argparse
@@ -11,7 +11,7 @@ import shutil
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-BASE_WEIGHTS = HERE.parent.parent / "training" / "yolo11n.pt"
+BASE_WEIGHTS = HERE.parent / "yolo11n.pt"
 
 
 def main():
