@@ -30,6 +30,9 @@ Training/*/*.onnx.data
 *.pt
 # ...except the pretrained base weights the trainers start from (5.6 MB, Ultralytics AGPL-3.0)
 !Training/yolo11n.pt
+# ...and the current trained paper-ball model (replaced by each new version)
+!Training/paper_ball_detector/roboflow-paperball.pt
+!Training/paper_ball_detector/roboflow-paperball.onnx
 # Real dataset configs (copy of dataset.yaml.example); the .example file stays tracked
 Training/litter_detector/dataset.yaml
 Training/litter_detector/my_dataset.yaml
