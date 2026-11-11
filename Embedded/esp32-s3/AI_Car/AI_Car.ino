@@ -3,6 +3,8 @@
 #include <BLEUtils.h>
 #include <BLE2902.h>
 #include <string.h>
+#include <Wire.h>
+#include <math.h>
 
 // HC-SR04 ultrasonic sensor pins.
 // ECHO is 5V, so it goes through a divider (1k in series, 2k to GND) before the pin.
@@ -13,12 +15,35 @@ const char* DISTANCE_CHAR_UUID = "11223344-5566-7788-99AA-BBCCDDEEFF00";
 const unsigned long DISTANCE_INTERVAL_MS = 100;   // time between distance readings
 const unsigned long ECHO_TIMEOUT_US = 25000;      // ~4.3 m max range
 
+// MPU-6050 (I2C). AD0 -> GND gives address 0x68.
+const int MPU_SDA_PIN = 41;
+const int MPU_SCL_PIN = 42;
+const uint8_t MPU_ADDR = 0x68;
+const unsigned long MPU_READ_INTERVAL_MS = 20;    // sensor read / filter update
+const unsigned long MPU_NOTIFY_INTERVAL_MS = 100; // BLE + Serial output
+const float MPU_FILTER_ALPHA = 0.98f;             // complementary filter: gyro vs accel weight
+const float MPU_GYRO_LSB_PER_DPS = 65.5f;         // gyro range +-500 deg/s
+const float MPU_YAW_DEADBAND_DPS = 0.3f;          // ignore tiny gyro noise so heading doesn't creep
+const int MPU_CAL_SAMPLES = 200;                  // gyro offset calibration (keep the car still)
+const char* MPU_CHAR_UUID = "22334455-6677-8899-AABB-CCDDEEFF0011";
+
 BLEServer* pServer = nullptr;
 BLECharacteristic* pCharacteristic = nullptr;
 BLECharacteristic* pDistanceCharacteristic = nullptr;
+BLECharacteristic* pMpuCharacteristic = nullptr;
 
 bool deviceConnected = false;
 unsigned long lastDistanceRead = 0;
+
+bool mpuOk = false;
+float mpuPitch = 0, mpuRoll = 0;                  // degrees
+float mpuYaw = 0;                                 // heading change in degrees, + = counter-clockwise from above
+float gyroBiasX = 0, gyroBiasY = 0, gyroBiasZ = 0; // deg/s measured while still
+volatile bool mpuCalRequested = false;
+volatile bool mpuYawResetRequested = false;
+float mpuAx = 0, mpuAy = 0, mpuAz = 0;            // g
+float mpuGx = 0, mpuGy = 0, mpuGz = 0;            // deg/s
+unsigned long lastMpuRead = 0, lastMpuNotify = 0, lastMpuMicros = 0, lastMpuRetry = 0;
 
 const int IN1 = 4;
 const int IN2 = 5;
@@ -79,6 +104,8 @@ void handleCommand(String message) {
       case 'L': motors(0, 1, 1, 0); break;
       case 'R': motors(1, 0, 0, 1); break;
       case 'S': motors(0, 0, 0, 0); break;
+      case 'Z': mpuYawResetRequested = true; break;  // heading back to 0
+      case 'C': mpuCalRequested = true; break;       // re-calibrate gyro (car must be still)
       default: Serial.println("Unknown motor command"); break;
     }
     return;
@@ -160,6 +187,156 @@ void updateDistance() {
   }
 }
 
+// Averages the gyro while the car is still to find its zero offset. Takes ~1 s.
+void calibrateGyro() {
+  float sx = 0, sy = 0, sz = 0;
+  int n = 0;
+  for (int i = 0; i < MPU_CAL_SAMPLES; i++) {
+    Wire.beginTransmission(MPU_ADDR);
+    Wire.write(0x43);  // GYRO_XOUT_H
+    if (Wire.endTransmission(false) == 0 && Wire.requestFrom(MPU_ADDR, (uint8_t)6) == 6) {
+      int16_t g[3];
+      for (int k = 0; k < 3; k++) {
+        uint8_t hi = Wire.read();
+        uint8_t lo = Wire.read();
+        g[k] = (int16_t)((hi << 8) | lo);
+      }
+      sx += g[0]; sy += g[1]; sz += g[2];
+      n++;
+    }
+    delay(5);
+  }
+  if (n > 0) {
+    gyroBiasX = sx / n / MPU_GYRO_LSB_PER_DPS;
+    gyroBiasY = sy / n / MPU_GYRO_LSB_PER_DPS;
+    gyroBiasZ = sz / n / MPU_GYRO_LSB_PER_DPS;
+  }
+  mpuYaw = 0;
+  Serial.printf("Gyro bias: %.2f %.2f %.2f deg/s\n", gyroBiasX, gyroBiasY, gyroBiasZ);
+}
+
+bool mpuInit() {
+  Wire.begin(MPU_SDA_PIN, MPU_SCL_PIN);
+  Wire.setClock(400000);
+
+  Wire.beginTransmission(MPU_ADDR);
+  Wire.write(0x75);  // WHO_AM_I
+  if (Wire.endTransmission(false) != 0) return false;
+  if (Wire.requestFrom(MPU_ADDR, (uint8_t)1) != 1) return false;
+  uint8_t who = Wire.read();
+  Serial.printf("MPU WHO_AM_I = 0x%02X\n", who);
+
+  Wire.beginTransmission(MPU_ADDR);
+  Wire.write(0x6B);  // PWR_MGMT_1: wake up, use X-gyro clock
+  Wire.write(0x01);
+  if (Wire.endTransmission() != 0) return false;
+
+  Wire.beginTransmission(MPU_ADDR);
+  Wire.write(0x1A);  // CONFIG: digital low-pass filter ~44 Hz (less noise)
+  Wire.write(0x03);
+  Wire.endTransmission();
+
+  Wire.beginTransmission(MPU_ADDR);
+  Wire.write(0x1B);  // GYRO_CONFIG: +-500 deg/s so fast hand turns don't clip
+  Wire.write(0x08);
+  Wire.endTransmission();
+  // Accel stays at default +-2g (16384 LSB/g).
+
+  delay(100);
+  calibrateGyro();
+  return true;
+}
+
+// Reads the MPU and updates the tilt angles (complementary filter).
+void updateMpu() {
+  unsigned long now = millis();
+  if (mpuOk && mpuCalRequested) {
+    mpuCalRequested = false;
+    calibrateGyro();
+    lastMpuMicros = micros();
+  }
+  if (mpuYawResetRequested) {
+    mpuYawResetRequested = false;
+    mpuYaw = 0;
+  }
+  if (!mpuOk) {
+    // Not found yet: retry every 2 s (e.g. wired after boot) and list I2C devices.
+    if (now - lastMpuRetry >= 2000) {
+      lastMpuRetry = now;
+      mpuOk = mpuInit();
+      lastMpuMicros = micros();
+      if (mpuOk) {
+        Serial.println("MPU-6050 ready");
+      } else {
+        Serial.print("MPU not found. I2C devices:");
+        int found = 0;
+        for (uint8_t a = 1; a < 127; a++) {
+          Wire.beginTransmission(a);
+          if (Wire.endTransmission() == 0) { Serial.printf(" 0x%02X", a); found++; }
+        }
+        Serial.println(found ? "" : " none");
+      }
+    }
+    return;
+  }
+  if (now - lastMpuRead >= MPU_READ_INTERVAL_MS) {
+    lastMpuRead = now;
+
+    Wire.beginTransmission(MPU_ADDR);
+    Wire.write(0x3B);  // ACCEL_XOUT_H
+    if (Wire.endTransmission(false) == 0 && Wire.requestFrom(MPU_ADDR, (uint8_t)14) == 14) {
+      int16_t raw[7];
+      for (int i = 0; i < 7; i++) {
+        uint8_t hi = Wire.read();
+        uint8_t lo = Wire.read();
+        raw[i] = (int16_t)((hi << 8) | lo);
+      }
+      mpuAx = raw[0] / 16384.0f;
+      mpuAy = raw[1] / 16384.0f;
+      mpuAz = raw[2] / 16384.0f;
+      mpuGx = raw[4] / MPU_GYRO_LSB_PER_DPS - gyroBiasX;
+      mpuGy = raw[5] / MPU_GYRO_LSB_PER_DPS - gyroBiasY;
+      mpuGz = raw[6] / MPU_GYRO_LSB_PER_DPS - gyroBiasZ;
+
+      unsigned long us = micros();
+      float dt = (us - lastMpuMicros) / 1e6f;
+      lastMpuMicros = us;
+      if (dt <= 0 || dt > 0.5f) dt = MPU_READ_INTERVAL_MS / 1000.0f;
+
+      float accRoll = atan2f(mpuAy, mpuAz) * 180.0f / M_PI;
+      float accPitch = atan2f(-mpuAx, sqrtf(mpuAy * mpuAy + mpuAz * mpuAz)) * 180.0f / M_PI;
+      if (fabsf(mpuGz) > MPU_YAW_DEADBAND_DPS) {
+        mpuYaw += mpuGz * dt;
+        if (mpuYaw > 180.0f) mpuYaw -= 360.0f;
+        if (mpuYaw < -180.0f) mpuYaw += 360.0f;
+      }
+      mpuRoll = MPU_FILTER_ALPHA * (mpuRoll + mpuGx * dt) + (1 - MPU_FILTER_ALPHA) * accRoll;
+      mpuPitch = MPU_FILTER_ALPHA * (mpuPitch + mpuGy * dt) + (1 - MPU_FILTER_ALPHA) * accPitch;
+    }
+  }
+}
+
+// Sends "yaw,pitch,roll,gx,gy,gz,ax,ay,az" (deg x3, deg/s x3, g x3) over BLE.
+void notifyMpu() {
+  unsigned long now = millis();
+  if (now - lastMpuNotify < MPU_NOTIFY_INTERVAL_MS) return;
+  lastMpuNotify = now;
+
+  char buf[96];
+  if (mpuOk) {
+    snprintf(buf, sizeof(buf), "%.1f,%.1f,%.1f,%.1f,%.1f,%.1f,%.2f,%.2f,%.2f",
+             mpuYaw, mpuPitch, mpuRoll, mpuGx, mpuGy, mpuGz, mpuAx, mpuAy, mpuAz);
+  } else {
+    snprintf(buf, sizeof(buf), "NA");
+  }
+  Serial.printf("MPU: %s\n", buf);
+
+  if (deviceConnected && pMpuCharacteristic) {
+    pMpuCharacteristic->setValue((uint8_t*)buf, strlen(buf));
+    pMpuCharacteristic->notify();
+  }
+}
+
 class ServerCallbacks: public BLEServerCallbacks {
   void onConnect(BLEServer* server) override {
     deviceConnected = true;
@@ -197,6 +374,10 @@ void setup() {
   pinMode(ECHO_PIN, INPUT);
   digitalWrite(TRIG_PIN, LOW);
 
+  mpuOk = mpuInit();
+  lastMpuMicros = micros();
+  Serial.println(mpuOk ? "MPU-6050 ready (keep the car still while it calibrates)" : "ERROR: MPU-6050 not found (check SDA/SCL/power)");
+
   // Servo PWM setup (50 Hz, direct LEDC). Servos must use an external 5V supply.
   for (int i = 0; i < NUM_SERVOS; i++) {
     if (!ledcAttach(SERVO_PINS[i], SERVO_FREQ_HZ, SERVO_PWM_BITS)) {
@@ -206,6 +387,7 @@ void setup() {
   }
 
   BLEDevice::init("AI_Car");
+  BLEDevice::setMTU(185);  // MPU notifications are longer than the default 20 bytes
 
   pServer = BLEDevice::createServer();
   pServer->setCallbacks(new ServerCallbacks());
@@ -229,6 +411,14 @@ void setup() {
   );
   pDistanceCharacteristic->addDescriptor(new BLE2902());
 
+  // MPU-6050 data, ASCII "pitch,roll,ax,ay,az,gx,gy,gz" ("NA" = sensor not found).
+  pMpuCharacteristic = pService->createCharacteristic(
+    MPU_CHAR_UUID,
+    BLECharacteristic::PROPERTY_READ |
+    BLECharacteristic::PROPERTY_NOTIFY
+  );
+  pMpuCharacteristic->addDescriptor(new BLE2902());
+
   pService->start();
 
   BLEAdvertising* pAdvertising = BLEDevice::getAdvertising();
@@ -243,5 +433,7 @@ void setup() {
 void loop() {
   updateServos();
   updateDistance();
+  updateMpu();
+  notifyMpu();
   delay(2);
 }

@@ -1,4 +1,5 @@
 import asyncio
+import math
 import threading
 import time
 import tkinter as tk
@@ -11,6 +12,12 @@ CHAR_UUID = "87654321-4321-4321-4321-BA0987654321"
 
 SERVICE_UUID = "12345678-1234-1234-1234-1234567890AB"
 DISTANCE_CHAR_UUID = "11223344-5566-7788-99AA-BBCCDDEEFF00"  # notifies distance in cm ("-1" = no echo)
+MPU_CHAR_UUID = "22334455-6677-8899-AABB-CCDDEEFF0011"  # "yaw,pitch,roll,gx,gy,gz,ax,ay,az" ("NA" = no sensor)
+
+# Flip any of these to -1 if a direction shows backwards for how the MPU is mounted.
+YAW_SIGN = 1     # +1: turning the car left gives a positive heading
+PITCH_SIGN = 1   # +1: positive = front tilted up
+ROLL_SIGN = 1    # +1: positive = leaning right
 
 # Servo protocol: V<index> <angle> <speed deg/sec>, e.g. V0 90 60
 SERVO_SPEED = 60
@@ -21,8 +28,8 @@ class AICarController:
     def __init__(self, root):
         self.root = root
         self.root.title("AI_Car BLE Controller")
-        self.root.geometry("680x690")
-        self.root.minsize(600, 620)
+        self.root.geometry("680x860")
+        self.root.minsize(600, 800)
 
         self.loop = None
         self.client = None
@@ -38,6 +45,11 @@ class AICarController:
 
         self.status_var = tk.StringVar(value="Disconnected")
         self.distance_var = tk.StringVar(value="-- cm")
+        self.heading_var = tk.StringVar(value="Heading: --")
+        self.pitch_var = tk.StringVar(value="Front-back tilt: --")
+        self.roll_var = tk.StringVar(value="Side tilt: --")
+        self.spin_var = tk.StringVar(value="Turning speed: --")
+        self.heading_deg = 0.0
         self._build_ui()
 
         self.worker = threading.Thread(target=self._ble_thread, daemon=True)
@@ -78,6 +90,23 @@ class AICarController:
         ttk.Label(
             sensor, textvariable=self.distance_var, font=("Segoe UI", 14, "bold")
         ).pack(side="left", padx=8)
+
+        imu = ttk.LabelFrame(main, text="Motion sensor (MPU-6050)", padding=8)
+        imu.pack(fill="x", pady=(10, 0))
+        self.dial = tk.Canvas(imu, width=110, height=110, highlightthickness=0)
+        self.dial.pack(side="left", padx=(4, 14))
+        self._draw_dial()
+
+        info = ttk.Frame(imu)
+        info.pack(side="left", fill="x", expand=True)
+        ttk.Label(info, textvariable=self.heading_var, font=("Segoe UI", 14, "bold")).pack(anchor="w")
+        ttk.Label(info, textvariable=self.spin_var).pack(anchor="w")
+        ttk.Label(info, textvariable=self.pitch_var).pack(anchor="w")
+        ttk.Label(info, textvariable=self.roll_var).pack(anchor="w")
+        buttons = ttk.Frame(info)
+        buttons.pack(anchor="w", pady=(6, 0))
+        ttk.Button(buttons, text="Reset heading to 0°", command=lambda: self._send("Z")).pack(side="left")
+        ttk.Button(buttons, text="Calibrate (keep still)", command=lambda: self._send("C")).pack(side="left", padx=6)
 
         servos_frame = ttk.LabelFrame(main, text="Servo control", padding=12)
         servos_frame.pack(fill="both", expand=True, pady=(10, 0))
@@ -208,6 +237,11 @@ class AICarController:
         except Exception:
             self.root.after(0, lambda: self.distance_var.set("n/a"))
 
+        try:
+            await self.client.start_notify(MPU_CHAR_UUID, self._on_mpu)
+        except Exception:
+            self.root.after(0, lambda: self.heading_var.set("MPU characteristic missing"))
+
         self.connected.set()
         self.root.after(0, lambda: self.status_var.set("Connected to AI_Car"))
 
@@ -222,6 +256,7 @@ class AICarController:
 
         self.connected.clear()
         self.root.after(0, lambda: self.distance_var.set("-- cm"))
+        self.root.after(0, lambda: self.heading_var.set("Heading: --"))
         self.root.after(0, lambda: self.status_var.set("Disconnected"))
 
     def _on_distance(self, _sender, data):
@@ -231,6 +266,53 @@ class AICarController:
             return
         text = "out of range" if cm < 0 else f"{cm:.1f} cm"
         self.root.after(0, lambda: self.distance_var.set(text))
+
+    def _draw_dial(self):
+        c = self.dial
+        c.delete("all")
+        cx, cy, r = 55, 55, 46
+        c.create_oval(cx - r, cy - r, cx + r, cy + r, outline="gray")
+        c.create_text(cx, cy - r - 1, text="0°", anchor="s", fill="gray", font=("Segoe UI", 7))
+        h = math.radians(self.heading_deg)
+        # Positive heading = counter-clockwise on screen (a left turn).
+        tip = (cx - (r - 4) * math.sin(h), cy - (r - 4) * math.cos(h))
+        c.create_line(cx, cy, *tip, width=4, arrow="last", arrowshape=(10, 12, 5), fill="#1f6feb")
+        c.create_oval(cx - 4, cy - 4, cx + 4, cy + 4, fill="#1f6feb", outline="")
+
+    @staticmethod
+    def _describe(value, positive, negative, unit="°"):
+        if abs(value) < 1:
+            return "level"
+        return f"{abs(value):.0f}{unit} {positive if value > 0 else negative}"
+
+    def _on_mpu(self, _sender, data):
+        text = bytes(data).decode("ascii", errors="ignore").strip()
+        if text == "NA":
+            self.root.after(0, lambda: self.heading_var.set("MPU-6050 not found"))
+            return
+        try:
+            yaw, pitch, roll, gx, gy, gz, ax, ay, az = (float(v) for v in text.split(","))
+        except ValueError:
+            return
+
+        yaw *= YAW_SIGN
+        pitch *= PITCH_SIGN
+        roll *= ROLL_SIGN
+        gz *= YAW_SIGN
+
+        def update():
+            self.heading_deg = yaw
+            if abs(yaw) < 1:
+                self.heading_var.set("Heading: straight (0°)")
+            else:
+                self.heading_var.set(f"Turned {abs(yaw):.0f}° {'left' if yaw > 0 else 'right'}")
+            spin = "stopped" if abs(gz) < 2 else f"{abs(gz):.0f}°/s {'left' if gz > 0 else 'right'}"
+            self.spin_var.set(f"Turning speed: {spin}")
+            self.pitch_var.set(f"Front-back tilt: {self._describe(pitch, 'front up', 'front down')}")
+            self.roll_var.set(f"Side tilt: {self._describe(roll, 'leaning right', 'leaning left')}")
+            self._draw_dial()
+
+        self.root.after(0, update)
 
     async def _write(self, message):
         if self.client and self.client.is_connected and self.characteristic:
