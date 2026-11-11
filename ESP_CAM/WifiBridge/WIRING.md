@@ -17,7 +17,7 @@ flowchart LR
     BR["ESP32 WROOM-32 devkit<br/>(bridge, WiFi network ESP32-BRIDGE)"]
     US["HC-SR04<br/>ultrasonic sensor"]
     PC["Laptop<br/>viewer / YOLO"]
-    CAM -- "U0T to G16: JPEG frames, 3,000,000 baud" --> BR
+    CAM -- "U0T to G34: JPEG frames, 3,000,000 baud" --> BR
     BR -- "5V power" --> CAM
     BR -- "GND (common)" --- CAM
     BR -- "5V, GND, TRIG" --> US
@@ -30,7 +30,7 @@ flowchart LR
  +-----------+                  +--------------------+               +---------+
  | 5V    o---+------ red -------+--o VIN/5V       5V o+------ red ----+-o VCC   |
  | GND   o---+------ black -----+--o GND          G25 o+----- orange -+-o TRIG  |
- | U0T   o---+------ orange ---->--o G16 (RX2)    G26 o+-----+--[1k]--+-o ECHO  |
+ | U0T   o---+------ orange ---->--o G34           G26 o+-----+--[1k]--+-o ECHO  |
  +-----------+   (frames)       |                     |      |       |         |
                                 |                     |     [2k]     |         |
                                 |                 GND o+-----+-------+-o GND   |
@@ -43,7 +43,7 @@ flowchart LR
 |---|---|---|---|
 | **5V** | red | **VIN / 5V** | powers the camera from the devkit (measured 4.9 V at the camera) |
 | **GND** | black | **GND** | common ground (the signal needs it) |
-| **U0T** (GPIO1, TX) | orange | **G16** (RX2) | JPEG frames, one direction, camera to bridge |
+| **U0T** (GPIO1, TX) | orange | **G34** (input-only) | JPEG frames, one direction, camera to bridge |
 
 Leave unconnected: the camera's `VCC`, `U0R`, `IO0` and every other pin.
 
@@ -52,7 +52,7 @@ Leave unconnected: the camera's `VCC`, `U0R`, `IO0` and every other pin.
 | Board | How to find it |
 |---|---|
 | ESP32-CAM | Lens facing up, read the printed labels. The right-hand header, top to bottom, is `3V3, IO16, IO0, GND, VCC, U0R, U0T, GND/R`. **U0T is the 2nd pin up from the bottom.** The **5V** pin is on the *other* header (the one with `IO12 … IO4`). |
-| Devkit, left row (USB at the top) | `CLK, SD0, SD1, G15, G2, G0, G4,` **`G16`**`, G17, G5, G18, G19, GND, G21, RXD, TXD, G22, G23, GND`. G16 is the 8th pin from the USB end. |
+| Devkit, left row (USB at the top) | `CLK, SD0, SD1, G15, G2, G0, G4,` `G16, G17, G5, G18, G19, GND, G21, RXD, TXD, G22, G23, GND`. |
 | Devkit, right row (USB at the top) | `5V/VIN, GND, SD3, SD2, G13, GND, G12, G14, G27,` **`G26`**`,` **`G25`**`, G33, G32, G35, G34, SN, SP, EN, 3V3`. The first label at the USB end was hard to read in the photo, so check the print for `5V` or `VIN`. |
 
 **Settings that must match**
@@ -60,7 +60,7 @@ Leave unconnected: the camera's `VCC`, `U0R`, `IO0` and every other pin.
 | Setting | Camera firmware | Bridge firmware |
 |---|---|---|
 | Baud rate | `SERIAL_BAUD 3000000` | `CAM_BAUD 3000000` |
-| Receive pin | (not used) | `RX_PIN 16` |
+| Receive pin | (not used) | `RX_PIN 34` |
 | Frame format | `A5 5A C3 3C`, 4-byte length, JPEG | same |
 
 4,000,000 baud failed on jumper wires (data errors). 3,000,000 ran clean.
@@ -74,7 +74,7 @@ Leave unconnected: the camera's `VCC`, `U0R`, `IO0` and every other pin.
 | **TRIG** | orange | **G25** | a 3.3 V output is enough to trigger it |
 | **ECHO** | through the divider | **G26** | the echo output is **5 V**, so it needs the divider below |
 
-Pins to avoid on the devkit: `G16` (the camera link), `G0, G2, G12, G15` (they affect booting), and `G6 to G11`
+Pins to avoid on the devkit: `G34` (the camera link), `G0, G2, G12, G15` (they affect booting), and `G6 to G11`
 (they belong to the flash chip).
 
 ## Resistor advice: the voltage divider on ECHO

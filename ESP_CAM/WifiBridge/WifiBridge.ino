@@ -1,6 +1,6 @@
 // ESP32 (WROOM-32 dev board) WiFi bridge for the ESP32-CAM wired stream.
 //
-//   ESP32-CAM  U0T (GPIO1) ----> bridge GPIO16 (RX2)      common GND required
+//   ESP32-CAM  U0T (GPIO1) ----> bridge GPIO34 (input-only pin, "G34")      common GND required
 //   (camera firmware: USE_SERIAL_STREAM 1, 921600 baud)
 //
 // The bridge creates its own WiFi network. Join it from the laptop and run:
@@ -15,7 +15,7 @@ const char *AP_SSID = "ESP32-BRIDGE";
 const char *AP_PASS = "12345678";  // at least 8 characters
 #define AP_CHANNEL 1
 #define CAM_BAUD 3000000
-#define RX_PIN 16  // connect to ESP32-CAM U0T
+#define RX_PIN 34  // connect to ESP32-CAM U0T (GPIO34 is input-only, which is fine for receiving)
 #define TX_PIN 17  // not used
 #define MAX_FRAME 60000
 #define TCP_PORT 8080
