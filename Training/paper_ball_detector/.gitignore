@@ -1,0 +1,4 @@
+# training output and the exported model (the datasets are tracked; the Roboflow data is CC BY 4.0, see dataset/README.roboflow.txt)
+runs/
+*.onnx
+*.zip

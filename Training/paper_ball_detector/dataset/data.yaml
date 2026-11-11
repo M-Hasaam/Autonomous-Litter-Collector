@@ -1,0 +1,13 @@
+train: ../train/images
+val: ../valid/images
+test: ../test/images
+
+nc: 1
+names: ['paper']
+
+roboflow:
+  workspace: m-hamza-20zst
+  project: paper-o0htz-7g81g
+  version: 1
+  license: CC BY 4.0
+  url: https://app.roboflow.com/m-hamza-20zst/paper-o0htz-7g81g/1

@@ -1,0 +1,5 @@
+# Test 2: labeled images captured with the real ESP32-CAM. One class, same as the Roboflow model (class 0 = paper ball).
+train: images
+val: images
+names:
+  0: paper

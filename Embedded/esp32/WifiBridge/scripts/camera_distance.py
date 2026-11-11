@@ -1,7 +1,7 @@
-"""Detect paper balls with the temporary 'yolo-temp' model and estimate how far away they are (camera only).
+"""Detect paper balls with the Roboflow-trained model and estimate how far away they are (camera only).
 
-TEMPORARY test tool - it does not touch the app's model. The model is Training/paperball_yolo_temp/yolo-temp.onnx
-(build it with Training/paperball_yolo_temp/prepare_dataset.py + train_yolo_temp.py).
+TEST tool - it does not touch the app's model. The model is Training/paper_ball_detector/roboflow-paperball.onnx
+(train it with Training/paper_ball_detector/train_roboflow.py or the Colab notebook).
 
 Two distance estimates are made from each detected box:
   * floor  : the lower the ball's bottom edge sits in the image, the closer it is (needs --calibrate once).
@@ -34,11 +34,11 @@ import connection_help
 from camera_yolo import FrameGrabber, ROTATIONS, Source, window_closed
 
 ROOT = Path(__file__).resolve().parents[4]
-TEMP_DIR = ROOT / "Training" / "paperball_yolo_temp"
-DEFAULT_MODEL = TEMP_DIR / "yolo-temp.onnx"
-CALIB_FILE = TEMP_DIR / "distance_calibration.json"
+MODEL_DIR = ROOT / "Training" / "paper_ball_detector"
+DEFAULT_MODEL = MODEL_DIR / "roboflow-paperball.onnx"
+CALIB_FILE = MODEL_DIR / "distance_calibration.json"
 CAPTURE_DIR = ROOT / "Embedded" / "esp32-cam" / "captures"
-WINDOW = "ESP32-CAM paper-ball distance (yolo-temp)"
+WINDOW = "ESP32-CAM paper-ball distance (roboflow)"
 BIG_RATIO = 1.4  # a ball this much wider than the calibration ball (at the same distance) is "BIG"
 GREEN, ORANGE, RED, YELLOW = (0, 255, 0), (0, 165, 255), (0, 0, 255), (0, 255, 255)
 
@@ -354,8 +354,8 @@ def main():
     args = ap.parse_args()
 
     if not Path(args.model).is_file():
-        print(f"Model not found: {args.model}\nBuild it first: py Training/paperball_yolo_temp/prepare_dataset.py, then "
-              f"train_yolo_temp.py in an Ultralytics environment.", file=sys.stderr)
+        print(f"Model not found: {args.model}\nTrain it first: Training/paper_ball_detector/train_roboflow.py "
+              f"(or the Colab notebook) in an Ultralytics environment.", file=sys.stderr)
         sys.exit(1)
     detector = OnnxDetector(args.model, args.imgsz, args.conf, args.iou)
     model = DistanceModel.load(args.fov, args.ball_cm, args.rotate)

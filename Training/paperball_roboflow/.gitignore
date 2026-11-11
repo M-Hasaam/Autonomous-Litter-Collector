@@ -1,6 +1,0 @@
-# the downloaded Roboflow dataset (licence terms apply), training output and the exported model
-dataset/
-runs/
-*.onnx
-dataset_fixed/
-*.zip

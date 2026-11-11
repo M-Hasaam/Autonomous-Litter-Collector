@@ -28,6 +28,8 @@ Training/*/*_saved_model/
 Training/*/*.onnx
 Training/*/*.onnx.data
 *.pt
+# ...except the pretrained base weights the trainers start from (5.6 MB, Ultralytics AGPL-3.0)
+!Training/yolo11n.pt
 # Real dataset configs (copy of dataset.yaml.example); the .example file stays tracked
 Training/litter_detector/dataset.yaml
 Training/litter_detector/my_dataset.yaml
@@ -39,7 +41,5 @@ Mobile_app/app/src/main/assets/*.new
 Embedded/**/build/
 Embedded/esp32-cam/captures/
 
-# Local datasets and trained models (kept on disk, never committed)
-Training/*/dataset/
-Training/*/dataset_fixed/
+# The datasets (Training/*/dataset, dataset_fixed) are tracked. Only the derived zip is ignored.
 Training/*/dataset_fixed.zip

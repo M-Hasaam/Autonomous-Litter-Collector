@@ -9,8 +9,7 @@ Embedded/
   arduino/             Arduino sketches and PC tools (AI_CAR, HC_SR04_Test, Robotic_ARM)
 Training/
   litter_detector/     the app's model: train / export / predict
-  paperball_roboflow/  Roboflow paper-ball dataset, repair script, trainer, trained model
-  paperball_yolo_temp/ temporary paper-ball model built from camera captures
+  paper_ball_detector/ Roboflow paper-ball dataset, repair script, trainer, trained model
 ```
 
 Datasets, runs and trained weights stay on disk and are git-ignored.
