@@ -4,10 +4,21 @@
 #include <BLE2902.h>
 #include <string.h>
 
+// HC-SR04 ultrasonic sensor pins.
+// ECHO is 5V, so it goes through a divider (1k in series, 2k to GND) before the pin.
+const int TRIG_PIN = 10;
+const int ECHO_PIN = 11;
+
+const char* DISTANCE_CHAR_UUID = "11223344-5566-7788-99AA-BBCCDDEEFF00";
+const unsigned long DISTANCE_INTERVAL_MS = 100;   // time between distance readings
+const unsigned long ECHO_TIMEOUT_US = 25000;      // ~4.3 m max range
+
 BLEServer* pServer = nullptr;
 BLECharacteristic* pCharacteristic = nullptr;
+BLECharacteristic* pDistanceCharacteristic = nullptr;
 
 bool deviceConnected = false;
+unsigned long lastDistanceRead = 0;
 
 const int IN1 = 4;
 const int IN2 = 5;
@@ -117,7 +128,39 @@ void updateServos() {
   }
 }
 
-class ServerCallbacks : public BLEServerCallbacks {
+// Returns distance in cm, or -1 if no echo was received (out of range).
+float readDistanceCm() {
+  digitalWrite(TRIG_PIN, LOW);
+  delayMicroseconds(2);
+  digitalWrite(TRIG_PIN, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(TRIG_PIN, LOW);
+
+  unsigned long duration = pulseIn(ECHO_PIN, HIGH, ECHO_TIMEOUT_US);
+  if (duration == 0) return -1;
+  return duration * 0.0343f / 2.0f;
+}
+
+// Reads the sensor periodically, prints it and notifies the BLE client.
+void updateDistance() {
+  unsigned long now = millis();
+  if (now - lastDistanceRead < DISTANCE_INTERVAL_MS) return;
+  lastDistanceRead = now;
+
+  float cm = readDistanceCm();
+  char buf[16];
+  if (cm < 0) snprintf(buf, sizeof(buf), "-1");
+  else snprintf(buf, sizeof(buf), "%.1f", cm);
+
+  Serial.printf("Distance: %s cm\n", buf);
+
+  if (deviceConnected && pDistanceCharacteristic) {
+    pDistanceCharacteristic->setValue((uint8_t*)buf, strlen(buf));
+    pDistanceCharacteristic->notify();
+  }
+}
+
+class ServerCallbacks: public BLEServerCallbacks {
   void onConnect(BLEServer* server) override {
     deviceConnected = true;
     Serial.println("BLE Client Connected");
@@ -150,6 +193,10 @@ void setup() {
   pinMode(RD, OUTPUT);
   motors(0, 0, 0, 0);
 
+  pinMode(TRIG_PIN, OUTPUT);
+  pinMode(ECHO_PIN, INPUT);
+  digitalWrite(TRIG_PIN, LOW);
+
   // Servo PWM setup (50 Hz, direct LEDC). Servos must use an external 5V supply.
   for (int i = 0; i < NUM_SERVOS; i++) {
     if (!ledcAttach(SERVO_PINS[i], SERVO_FREQ_HZ, SERVO_PWM_BITS)) {
@@ -174,6 +221,14 @@ void setup() {
 
   pCharacteristic->setCallbacks(new CharacteristicCallbacks());
 
+  // Distance (cm, ASCII text, "-1" = no echo) notified to the client.
+  pDistanceCharacteristic = pService->createCharacteristic(
+    DISTANCE_CHAR_UUID,
+    BLECharacteristic::PROPERTY_READ |
+    BLECharacteristic::PROPERTY_NOTIFY
+  );
+  pDistanceCharacteristic->addDescriptor(new BLE2902());
+
   pService->start();
 
   BLEAdvertising* pAdvertising = BLEDevice::getAdvertising();
@@ -187,5 +242,6 @@ void setup() {
 
 void loop() {
   updateServos();
+  updateDistance();
   delay(2);
 }

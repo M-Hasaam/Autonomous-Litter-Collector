@@ -10,6 +10,7 @@ DEVICE_NAME = "AI_Car"
 CHAR_UUID = "87654321-4321-4321-4321-BA0987654321"
 
 SERVICE_UUID = "12345678-1234-1234-1234-1234567890AB"
+DISTANCE_CHAR_UUID = "11223344-5566-7788-99AA-BBCCDDEEFF00"  # notifies distance in cm ("-1" = no echo)
 
 # Servo protocol: V<index> <angle> <speed deg/sec>, e.g. V0 90 60
 SERVO_SPEED = 60
@@ -36,6 +37,7 @@ class AICarController:
         self.closing = False
 
         self.status_var = tk.StringVar(value="Disconnected")
+        self.distance_var = tk.StringVar(value="-- cm")
         self._build_ui()
 
         self.worker = threading.Thread(target=self._ble_thread, daemon=True)
@@ -70,8 +72,15 @@ class AICarController:
         self._drive_button(drive, "Right  →", "R", 1, 2)
         self._drive_button(drive, "Reverse  ↓", "D", 2, 1)
 
+        sensor = ttk.LabelFrame(main, text="Ultrasonic sensor", padding=8)
+        sensor.pack(fill="x", pady=(14, 0))
+        ttk.Label(sensor, text="Distance:").pack(side="left")
+        ttk.Label(
+            sensor, textvariable=self.distance_var, font=("Segoe UI", 14, "bold")
+        ).pack(side="left", padx=8)
+
         servos_frame = ttk.LabelFrame(main, text="Servo control", padding=12)
-        servos_frame.pack(fill="both", expand=True, pady=(14, 0))
+        servos_frame.pack(fill="both", expand=True, pady=(10, 0))
 
         self.servo_scales = []
         self.servo_values = []
@@ -193,6 +202,12 @@ class AICarController:
             return
 
         self.write_response = "write" in self.characteristic.properties
+
+        try:
+            await self.client.start_notify(DISTANCE_CHAR_UUID, self._on_distance)
+        except Exception:
+            self.root.after(0, lambda: self.distance_var.set("n/a"))
+
         self.connected.set()
         self.root.after(0, lambda: self.status_var.set("Connected to AI_Car"))
 
@@ -206,7 +221,16 @@ class AICarController:
             await self.client.disconnect()
 
         self.connected.clear()
+        self.root.after(0, lambda: self.distance_var.set("-- cm"))
         self.root.after(0, lambda: self.status_var.set("Disconnected"))
+
+    def _on_distance(self, _sender, data):
+        try:
+            cm = float(bytes(data).decode("ascii"))
+        except ValueError:
+            return
+        text = "out of range" if cm < 0 else f"{cm:.1f} cm"
+        self.root.after(0, lambda: self.distance_var.set(text))
 
     async def _write(self, message):
         if self.client and self.client.is_connected and self.characteristic:
