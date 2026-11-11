@@ -22,7 +22,6 @@ from pathlib import Path
 
 import cv2
 import numpy as np
-from ai_edge_litert.interpreter import Interpreter
 
 import connection_help
 
@@ -136,6 +135,7 @@ class FrameGrabber(threading.Thread):
 # ---------------------------------------------------------------- YOLO, same steps as YoloDetector.kt
 class Yolo:
     def __init__(self, model_path, labels_path, conf, iou, threads):
+        from ai_edge_litert.interpreter import Interpreter  # imported here so other scripts can reuse Source/FrameGrabber
         self.labels = [l.strip() for l in Path(labels_path).read_text().splitlines() if l.strip()]
         self.interp = Interpreter(model_path=str(model_path), num_threads=threads)
         self.interp.allocate_tensors()
@@ -282,7 +282,7 @@ def main():
                 if key == ord("s"):
                     capture_dir.mkdir(exist_ok=True)
                     path = capture_dir / f"yolo_{time.strftime('%Y%m%d_%H%M%S')}.jpg"
-                    cv2.imwrite(str(path), shown)
+                    cv2.imwrite(str(path), frame)  # the clean frame: boxes/text drawn on it would ruin training images
                     print(f"Saved {path}")
             elif now - t_start > args.seconds:
                 break
