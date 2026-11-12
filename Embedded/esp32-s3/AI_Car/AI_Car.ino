@@ -71,21 +71,29 @@ void writeServo(int index, int angle) {
   ledcWrite(SERVO_PINS[index], duty);
 }
 
+// Wheel speed: PWM on the motor-driver pins, one setting for all wheels (command P<0-100>, percent).
+const int MOTOR_PINS[4] = {LU, LD, RU, RD};
+const int MOTOR_PWM_FREQ_HZ = 1000;
+const int MOTOR_PWM_BITS = 8;
+const uint32_t MOTOR_PWM_MAX = (1UL << MOTOR_PWM_BITS) - 1;
+int motorSpeedPct = 100;
+int motorState[4] = {0, 0, 0, 0};  // last requested direction (1 = on) for LU, LD, RU, RD
+
 int currentAngles[NUM_SERVOS] = {90, 90, 90, 90};
 int targetAngles[NUM_SERVOS] = {90, 90, 90, 90};
 int servoSpeeds[NUM_SERVOS] = {60, 60, 60, 60};  // degrees per second
 unsigned long lastServoUpdate[NUM_SERVOS] = {0, 0, 0, 0};
 
 void motors(int lu, int ld, int ru, int rd) {
-  digitalWrite(LU, LOW);
-  digitalWrite(LD, LOW);
-  digitalWrite(RU, LOW);
-  digitalWrite(RD, LOW);
+  motorState[0] = lu;
+  motorState[1] = ld;
+  motorState[2] = ru;
+  motorState[3] = rd;
 
-  digitalWrite(LU, lu);
-  digitalWrite(LD, ld);
-  digitalWrite(RU, ru);
-  digitalWrite(RD, rd);
+  uint32_t duty = MOTOR_PWM_MAX * motorSpeedPct / 100;
+  for (int i = 0; i < 4; i++) {
+    ledcWrite(MOTOR_PINS[i], motorState[i] ? duty : 0);
+  }
 }
 
 void handleCommand(String message) {
@@ -107,6 +115,19 @@ void handleCommand(String message) {
       case 'Z': mpuYawResetRequested = true; break;  // heading back to 0
       case 'C': mpuCalRequested = true; break;       // re-calibrate gyro (car must be still)
       default: Serial.println("Unknown motor command"); break;
+    }
+    return;
+  }
+
+  // Wheel speed: P<0-100> (percent, same for all wheels). Also applies to wheels that are running right now.
+  if (message.charAt(0) == 'P') {
+    int pct = -1;
+    if (sscanf(message.c_str(), "P%d", &pct) == 1 && pct >= 0 && pct <= 100) {
+      motorSpeedPct = pct;
+      motors(motorState[0], motorState[1], motorState[2], motorState[3]);
+      Serial.printf("Wheel speed: %d%%\n", pct);
+    } else {
+      Serial.println("Invalid speed. Use: P75");
     }
     return;
   }
@@ -364,10 +385,12 @@ class CharacteristicCallbacks : public BLECharacteristicCallbacks {
 void setup() {
   Serial.begin(115200);
 
-  pinMode(LU, OUTPUT);
-  pinMode(LD, OUTPUT);
-  pinMode(RU, OUTPUT);
-  pinMode(RD, OUTPUT);
+  // Wheel PWM (1 kHz, 8-bit). Uses 4 of the 8 LEDC channels; the 4 servos use the other 4.
+  for (int i = 0; i < 4; i++) {
+    if (!ledcAttach(MOTOR_PINS[i], MOTOR_PWM_FREQ_HZ, MOTOR_PWM_BITS)) {
+      Serial.printf("ERROR: could not attach motor pin %d\n", MOTOR_PINS[i]);
+    }
+  }
   motors(0, 0, 0, 0);
 
   pinMode(TRIG_PIN, OUTPUT);

@@ -43,6 +43,7 @@ Mobile_app/app/src/main/assets/*.new
 # Arduino/ESP32 build output
 Embedded/**/build/
 Embedded/esp32-cam/captures/
+Embedded/captures/
 
 # The datasets (Training/*/dataset, dataset_fixed) are tracked. Only the derived zip is ignored.
 Training/*/dataset_fixed.zip
