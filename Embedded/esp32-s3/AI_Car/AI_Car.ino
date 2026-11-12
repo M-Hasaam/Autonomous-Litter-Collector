@@ -11,6 +11,13 @@
 const int TRIG_PIN = 10;
 const int ECHO_PIN = 11;
 
+// Active buzzer: + to BUZZER_PIN, - to GND. Beeps while an obstacle is closer than BUZZER_ON_CM.
+// (An active buzzer has its own tone generator; all 8 PWM channels are already used by wheels and servos.)
+const int BUZZER_PIN = 14;
+const float BUZZER_ON_CM = 20.0f;                 // alarm starts below this distance
+const float BUZZER_OFF_CM = 23.0f;                // alarm stops above this (gap avoids flicker at the limit)
+const unsigned long BUZZER_BEEP_MS = 120;         // beep on / off time while alarming
+
 const char* DISTANCE_CHAR_UUID = "11223344-5566-7788-99AA-BBCCDDEEFF00";
 const unsigned long DISTANCE_INTERVAL_MS = 100;   // time between distance readings
 const unsigned long ECHO_TIMEOUT_US = 25000;      // ~4.3 m max range
@@ -34,6 +41,7 @@ BLECharacteristic* pMpuCharacteristic = nullptr;
 
 bool deviceConnected = false;
 unsigned long lastDistanceRead = 0;
+bool distanceAlarm = false;                       // true while an obstacle is too close
 
 bool mpuOk = false;
 float mpuPitch = 0, mpuRoll = 0;                  // degrees
@@ -196,6 +204,12 @@ void updateDistance() {
   lastDistanceRead = now;
 
   float cm = readDistanceCm();
+
+  // Alarm: on below BUZZER_ON_CM, off above BUZZER_OFF_CM, off when nothing is in range (-1).
+  if (cm < 0) distanceAlarm = false;
+  else if (cm < BUZZER_ON_CM) distanceAlarm = true;
+  else if (cm > BUZZER_OFF_CM) distanceAlarm = false;
+
   char buf[16];
   if (cm < 0) snprintf(buf, sizeof(buf), "-1");
   else snprintf(buf, sizeof(buf), "%.1f", cm);
@@ -205,6 +219,22 @@ void updateDistance() {
   if (deviceConnected && pDistanceCharacteristic) {
     pDistanceCharacteristic->setValue((uint8_t*)buf, strlen(buf));
     pDistanceCharacteristic->notify();
+  }
+}
+
+// Beeps (non-blocking) while distanceAlarm is set, silent otherwise.
+void updateBuzzer() {
+  static unsigned long lastToggle = 0;
+  static bool on = false;
+  if (!distanceAlarm) {
+    if (on) { on = false; digitalWrite(BUZZER_PIN, LOW); }
+    return;
+  }
+  unsigned long now = millis();
+  if (now - lastToggle >= BUZZER_BEEP_MS) {  // alternate beep / silence
+    on = !on;
+    digitalWrite(BUZZER_PIN, on ? HIGH : LOW);
+    lastToggle = now;
   }
 }
 
@@ -397,6 +427,9 @@ void setup() {
   pinMode(ECHO_PIN, INPUT);
   digitalWrite(TRIG_PIN, LOW);
 
+  pinMode(BUZZER_PIN, OUTPUT);
+  digitalWrite(BUZZER_PIN, LOW);
+
   mpuOk = mpuInit();
   lastMpuMicros = micros();
   Serial.println(mpuOk ? "MPU-6050 ready (keep the car still while it calibrates)" : "ERROR: MPU-6050 not found (check SDA/SCL/power)");
@@ -456,6 +489,7 @@ void setup() {
 void loop() {
   updateServos();
   updateDistance();
+  updateBuzzer();
   updateMpu();
   notifyMpu();
   delay(2);
