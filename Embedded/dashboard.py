@@ -20,7 +20,7 @@ import threading
 import time
 import tkinter as tk
 from pathlib import Path
-from tkinter import ttk
+from tkinter import simpledialog, ttk
 
 import cv2
 import numpy as np
@@ -45,6 +45,14 @@ SERVO_NAMES = ["Base Rotation", "Shoulder", "Elbow", "Gripper"]
 SERVO_SPEED = 60                  # default deg/s
 CAR_SPEED_DEFAULT = 100           # wheel speed in percent (one slider for all wheels)
 CAR_SPEED_MIN = 20                # below this the wheels usually stall
+
+# Path map (dead reckoning from gyro + motor commands, no encoders)
+CM_PER_S_AT_100 = 30.0            # how fast the car drives at 100% wheel speed - calibrate with "Test drive"
+REPLAY_TURN_PCT = 70              # wheel speed for the first, fast part of a gyro-controlled turn
+REPLAY_FINE_PCT = 55              # wheel speed for the last ~30 degrees of a turn (slower = more accurate)
+                                  # (if the wheels only hum, the dashboard raises these by itself - stall detection)
+BACK_SPEED_RATIO = 1.0            # reverse speed / forward speed (measure it: a 10% gap = ~5% error on the way home)
+TEST_DRIVE_S = 3.0                # length of the calibration drive
 SERVO_SEND_INTERVAL = 0.06        # seconds between live commands while dragging
 
 # Flip to -1 if a direction shows backwards for how the MPU is mounted.
@@ -234,6 +242,441 @@ class CameraWorker(threading.Thread):
             sock.close()
 
 
+# ---------------------------------------------------------------- dead reckoning (no encoders)
+def wrap180(angle):
+    """Wrap an angle in degrees into [-180, 180)."""
+    return (angle + 180.0) % 360.0 - 180.0
+
+
+class PathTracker:
+    """Estimates where the car is: heading from the gyro, distance from drive time x speed.
+
+    Map frame: the car starts at (0, 0) facing +y ("up"). Heading is in degrees, + = turning left (counter-clockwise).
+    `corners` is the recorded route: the origin plus the point where every straight drive ended. Driving back through
+    them in reverse order retraces the path.
+    """
+    MIN_MOVE_CM = 2.0
+    CORNER_MERGE_CM = 3.0
+    POINT_SPACING_CM = 1.0
+    MAX_POINTS = 20000
+    MAX_EXTRAPOLATE_S = 0.2
+
+    def __init__(self, cm_per_s_100=CM_PER_S_AT_100):
+        self.cm_per_s_100 = cm_per_s_100
+        self.recording = True
+        self.yaw = 0.0                 # unwrapped gyro yaw, degrees
+        self.gz = 0.0                  # latest turning speed (deg/s), used to predict the heading between readings
+        self.yaw_time = 0.0
+        self._last_wrapped = None
+        self.cmd = "S"
+        self.reset()
+
+    @property
+    def heading(self):
+        return self.yaw - self.yaw_ref
+
+    def heading_now(self, now):
+        """Heading predicted for time `now`: the gyro reading plus how far we have turned since it was taken."""
+        age = min(max(now - self.yaw_time, 0.0), self.MAX_EXTRAPOLATE_S)
+        return self.heading + self.gz * age
+
+    def reset(self):
+        """Forget the path: here becomes (0, 0), and the way the car faces becomes heading 0."""
+        self.yaw_ref = self.yaw
+        self.x = self.y = 0.0
+        self.total_cm = 0.0
+        self.points = [(0.0, 0.0, "out")]
+        self.corners = [(0.0, 0.0)]
+        self.phase = "out"             # "out" while exploring, "back" while returning
+        self.cmd = "S"
+        self._moving, self._val = False, 0.0
+
+    def feed_yaw(self, wrapped, resync=False, gz=0.0, now=None):
+        """New gyro heading from the car (wrapped to -180..180). resync = the car's yaw was zeroed or it rebooted."""
+        if self._last_wrapped is None or resync:
+            keep = 0.0 if self._last_wrapped is None else self.heading
+            self.yaw = wrapped
+            self.yaw_ref = self.yaw - keep       # the map heading does not jump
+        else:
+            self.yaw += wrap180(wrapped - self._last_wrapped)
+        self._last_wrapped = wrapped
+        self.gz = gz
+        self.yaw_time = time.monotonic() if now is None else now
+
+    def set_command(self, cmd):
+        """Call whenever a drive command (U D L R S) is sent to the car."""
+        if cmd == self.cmd:
+            return
+        self._close_segment()
+        self.cmd = cmd
+        self._moving, self._val = cmd in ("U", "D"), 0.0
+
+    def _close_segment(self):
+        if self.recording and self._moving and abs(self._val) >= self.MIN_MOVE_CM:
+            lx, ly = self.corners[-1]
+            if math.hypot(self.x - lx, self.y - ly) >= self.CORNER_MERGE_CM:
+                self.corners.append((self.x, self.y))
+        self._moving = False
+
+    def update(self, dt, speed_pct, now=None):
+        """Advance the position estimate by dt seconds of whatever the car is currently doing."""
+        if self.cmd not in ("U", "D") or dt <= 0:
+            return
+        d = self.cm_per_s_100 * speed_pct / 100.0 * dt * (1 if self.cmd == "U" else -BACK_SPEED_RATIO)
+        h = math.radians(self.heading if now is None else self.heading_now(now))
+        self.x += -math.sin(h) * d
+        self.y += math.cos(h) * d
+        self._val += d
+        self.total_cm += abs(d)
+        lx, ly, _ = self.points[-1]
+        if math.hypot(self.x - lx, self.y - ly) >= self.POINT_SPACING_CM:
+            self.points.append((self.x, self.y, self.phase))
+            if len(self.points) > self.MAX_POINTS:
+                del self.points[: self.MAX_POINTS // 10]
+
+
+def return_steps(corners):
+    """Drive back through the recorded corners, newest first, always forward; then face the way we started."""
+    steps = [["goto", x, y] for x, y in reversed(corners[:-1])]
+    if steps:
+        steps.append(["turn_to", 0.0])
+    return steps
+
+
+def plan_steps(waypoints):
+    """Drive through the waypoints clicked on the map (map cm). Each leg is re-aimed from where the car really is."""
+    return [["goto", x, y] for x, y in waypoints]
+
+
+class PathRunner:
+    """Drives a list of steps on its own, re-aiming before every leg.
+
+    Steps: ["goto", x, y]          turn towards the point (gyro), then drive forward until the estimate reaches it
+           ["turn_to", heading]    closed-loop in-place turn on the gyro
+           ["move", cm, tx, ty]    (made from a goto) forward drive; tx/ty let it stop when the estimate arrives
+    tick(now, gz) must be called every ~30 ms; send(cmd) sends a drive command to the car.
+    """
+    TURN_TOL_DEG = 2.0
+    LATENCY_S = 0.20            # BLE + motor lag: release the turn this early (scaled by the turning speed)
+    SETTLE_S = 0.45             # wait for the car to stop before judging a turn
+    FINE_ZONE_DEG = 30.0        # inside this error the turn slows down to REPLAY_FINE_PCT
+    MAX_CORRECTIONS = 3
+    TURN_TIMEOUT_S = 15.0
+    GOTO_TOL_CM = 3.0
+    STALL_RATE_DPS = 4.0        # turning slower than this while a turn command is active = the wheels are stalled
+    STALL_S = 0.6               # ... for this long (longer than the Bluetooth + motor lag)
+    STALL_STEP_PCT = 10         # raise the turn speed by this much each time
+
+    def __init__(self, tracker, send, get_speed, get_dist, on_finish=None):
+        self.tracker, self.send = tracker, send
+        self.get_speed, self.get_dist = get_speed, get_dist
+        self.on_finish = on_finish
+        self.active = False
+        self.status = "Idle"
+        self.label = ""
+        self.steps, self.idx, self.state = [], 0, "idle"
+        self.legs_done = self.legs_total = 0
+        self._speed_changed = False
+        self.last_turn_error = None
+        self.floor_pct = 0              # lowest turn speed at which the wheels were seen to actually turn
+        self.cur_pct = REPLAY_TURN_PCT
+        self.cmd_since = 0.0
+
+    def _turn_pct(self, fine):
+        return max(REPLAY_FINE_PCT if fine else REPLAY_TURN_PCT, self.floor_pct)
+
+    def start(self, steps, label, now):
+        if not steps:
+            self.status = f"{label}: nothing to do"
+            return False
+        self.steps = [list(s) for s in steps]
+        self.idx, self.label, self.state = 0, label, "next"
+        self.legs_done, self.legs_total = 0, sum(1 for s in steps if s[0] == "goto")
+        self.last_turn_error = None
+        self.active = True
+        self.status = f"{label}: starting"
+        return True
+
+    def abort(self, reason):
+        if not self.active:
+            return
+        self.active, self.state = False, "idle"
+        self.send("S")
+        self._restore_speed()
+        self.status = f"{self.label} stopped: {reason}"
+        if self.on_finish:
+            self.on_finish(False)
+
+    def _finish(self):
+        self.active, self.state = False, "idle"
+        self.send("S")
+        self._restore_speed()
+        extra = f" (turn error {self.last_turn_error:+.1f}°)" if self.last_turn_error is not None else ""
+        self.status = f"{self.label}: done{extra}"
+        if self.on_finish:
+            self.on_finish(True)
+
+    def _set_speed(self, pct):
+        self.send(f"P{pct}")
+        self._speed_changed = pct != self.get_speed()
+
+    def _restore_speed(self):
+        if self._speed_changed:
+            self._speed_changed = False
+            self.send(f"P{self.get_speed()}")
+
+    def tick(self, now, gz):
+        if not self.active:
+            return
+        tr, tol = self.tracker, self.TURN_TOL_DEG
+        if self.state == "next":
+            if self.idx >= len(self.steps):
+                self._finish()
+                return
+            step = self.steps[self.idx]
+            if step[0] == "goto":                      # re-aim from where the car is now
+                dx, dy = step[1] - tr.x, step[2] - tr.y
+                dist = math.hypot(dx, dy)
+                self.legs_done += 1
+                if dist < self.GOTO_TOL_CM:
+                    self.idx += 1
+                    return
+                bearing = math.degrees(math.atan2(-dx, dy))      # 0 = up, + = left
+                self.steps[self.idx:self.idx + 1] = [["turn_to", bearing], ["move", dist, step[1], step[2]]]
+                self.status = f"{self.label}: leg {self.legs_done}/{self.legs_total}"
+                return
+            if step[0] == "move":
+                v = tr.cm_per_s_100 * self.get_speed() / 100.0 * (1.0 if step[1] > 0 else BACK_SPEED_RATIO)
+                if v <= 0:
+                    self.abort("speed is 0")
+                    return
+                self._restore_speed()
+                self.send("U" if step[1] > 0 else "D")
+                self.until = now + abs(step[1]) / v * (1.0 if len(step) < 4 else 1.6)
+                self.state = "moving"
+            else:                                      # turn_to
+                err = wrap180(step[1] - tr.heading_now(now))
+                if abs(err) <= tol:
+                    self.last_turn_error = err
+                    self.idx += 1
+                    return
+                self.cur_pct = self._turn_pct(False)
+                self._set_speed(self.cur_pct)
+                self.corrections, self.turn_started, self.fine = 0, now, False
+                self.cmd_since = now
+                self.state = "turning"
+        elif self.state == "moving":
+            step = self.steps[self.idx]
+            if tr.cmd == "U":
+                d = self.get_dist()
+                if d is not None and d < DIST_STOP_CM:
+                    self.abort("obstacle ahead")
+                    return
+            arrived = now >= self.until
+            if len(step) >= 4 and step[1] > 0:         # stop when the estimate reaches the target point
+                h = math.radians(tr.heading_now(now))
+                if (step[2] - tr.x) * -math.sin(h) + (step[3] - tr.y) * math.cos(h) <= 0.5:
+                    arrived = True
+            if arrived:
+                self.send("S")
+                self.state, self.settle_until, self.after_settle = "settle", now + self.SETTLE_S, "advance"
+        elif self.state == "turning":
+            if now - self.turn_started > self.TURN_TIMEOUT_S:
+                self.abort("turn timed out")
+                return
+            err = wrap180(self.steps[self.idx][1] - tr.heading_now(now))
+            if abs(err) < self.FINE_ZONE_DEG and not self.fine:
+                self.fine = True
+                self.cur_pct = self._turn_pct(True)
+                self._set_speed(self.cur_pct)          # slow down for the last part: less overshoot
+                self.cmd_since = now
+            if abs(err) <= max(tol, abs(gz) * self.LATENCY_S):
+                self.send("S")
+                self.state, self.settle_until, self.after_settle = "settle", now + self.SETTLE_S, "check"
+            else:
+                want = "L" if err > 0 else "R"
+                if tr.cmd != want:
+                    self.send(want)
+                    self.cmd_since = now
+                elif abs(gz) < self.STALL_RATE_DPS and now - self.cmd_since > self.STALL_S and self.cur_pct < 100:
+                    # Commanded to turn but not turning: the wheels only hum. Give them more power, and remember it.
+                    self.cur_pct = min(100, self.cur_pct + self.STALL_STEP_PCT)
+                    self.floor_pct = self.cur_pct
+                    self._set_speed(self.cur_pct)
+                    self.cmd_since = now
+                    self.status = f"{self.label}: wheels stalled, turn speed raised to {self.cur_pct}%"
+        elif self.state == "settle":
+            if now < self.settle_until:
+                return
+            if self.after_settle == "check":
+                err = wrap180(self.steps[self.idx][1] - tr.heading_now(now))
+                if abs(err) > tol * 1.5 and self.corrections < self.MAX_CORRECTIONS:
+                    self.corrections += 1
+                    self.state = "turning"
+                    return
+                self.last_turn_error = err
+            self.idx += 1
+            self.state = "next"
+
+
+class PathWindow:
+    """The map: estimated path (blue = going out, green = coming back), click to plan waypoints."""
+
+    def __init__(self, app):
+        self.app = app
+        win = self.win = tk.Toplevel(app.root)
+        win.title("Path map - gyro + motors only (no encoders)")
+        win.configure(bg=BG)
+        h = min(800, win.winfo_screenheight() - 110)
+        win.geometry(f"660x{h}+80+20")
+        win.minsize(520, 560)
+        win.protocol("WM_DELETE_WINDOW", self.close)
+        self.waypoints = []
+        self.tf = None
+        self._last_draw = 0.0
+
+        self.canvas = tk.Canvas(win, bg="#0a0e14", highlightbackground=LINE, highlightthickness=1)
+        self.canvas.pack(fill="both", expand=True, padx=12, pady=(12, 6))
+        self.canvas.bind("<Button-1>", self._click)
+        self.canvas.bind("<Button-3>", lambda e: self._undo_waypoint())
+        self.canvas.bind("<Configure>", lambda e: self.refresh(force=True))
+
+        info = tk.Frame(win, bg=BG)
+        info.pack(fill="x", padx=12)
+        self.pos_var = tk.StringVar(value="")
+        self.status_var = tk.StringVar(value="")
+        tk.Label(info, textvariable=self.pos_var, bg=BG, fg=TEXT, font=(FONT, 10, "bold"), justify="left").pack(anchor="w")
+        tk.Label(info, textvariable=self.status_var, bg=BG, fg=MUTED, font=(FONT, 10)).pack(anchor="w")
+        tk.Label(info, text="Click the map to plan waypoints (right-click removes the last one). Drive by hand and the "
+                            "path is recorded.", bg=BG, fg=MUTED, font=(FONT, 9), wraplength=620, justify="left").pack(anchor="w")
+
+        row1 = tk.Frame(win, bg=BG)
+        row1.pack(fill="x", padx=12, pady=(8, 0))
+        app._button(row1, "Return to start", app.path_return).pack(side="left")
+        app._button(row1, "Run planned path", lambda: app.path_run_plan(self.waypoints)).pack(side="left", padx=6)
+        app._button(row1, "ABORT", app.path_abort, danger=True).pack(side="left")
+        app._button(row1, "Clear path (here = origin)", app.path_clear).pack(side="right")
+        app._button(row1, "Clear plan", self.clear_plan).pack(side="right", padx=6)
+
+        row2 = tk.Frame(win, bg=BG)
+        row2.pack(fill="x", padx=12, pady=(8, 12))
+        tk.Label(row2, text="Car speed at 100% (cm/s)", bg=BG, fg=MUTED, font=(FONT, 9)).pack(side="left")
+        self.speed_var = tk.StringVar(value=f"{app.tracker.cm_per_s_100:.1f}")
+        entry = tk.Entry(row2, textvariable=self.speed_var, width=7, bg=CARD_HI, fg=TEXT, insertbackground=TEXT,
+                         relief="flat", highlightthickness=1, highlightbackground=LINE)
+        entry.pack(side="left", padx=6)
+        entry.bind("<Return>", lambda e: self.apply_speed())
+        entry.bind("<FocusOut>", lambda e: self.apply_speed())
+        app._button(row2, f"Test drive {TEST_DRIVE_S:.0f} s (calibrate)", app.path_test_drive).pack(side="left", padx=6)
+
+    def close(self):
+        self.app.path_window = None
+        self.win.destroy()
+
+    def apply_speed(self):
+        try:
+            value = float(self.speed_var.get())
+            if value > 0:
+                self.app.tracker.cm_per_s_100 = value
+        except ValueError:
+            pass
+
+    def clear_plan(self):
+        self.waypoints = []
+        self.refresh(force=True)
+
+    def _undo_waypoint(self):
+        if self.waypoints:
+            self.waypoints.pop()
+            self.refresh(force=True)
+
+    def _click(self, event):
+        if self.tf is None:
+            return
+        cx, cy, scale, w, h = self.tf
+        self.waypoints.append((cx + (event.x - w / 2) / scale, cy - (event.y - h / 2) / scale))
+        self.refresh(force=True)
+
+    @staticmethod
+    def _grid_step(span):
+        for step in (5, 10, 20, 25, 50, 100, 200, 250, 500, 1000):
+            if span / step <= 10:
+                return step
+        return 2000
+
+    def refresh(self, force=False):
+        now = time.monotonic()
+        if not force and now - self._last_draw < 0.1:
+            return
+        self._last_draw = now
+        tr, c = self.app.tracker, self.canvas
+        w, h = max(c.winfo_width(), 50), max(c.winfo_height(), 50)
+        pts = tr.points
+        xs = [p[0] for p in pts] + [x for x, _ in self.waypoints] + [tr.x]
+        ys = [p[1] for p in pts] + [y for _, y in self.waypoints] + [tr.y]
+        cx, cy = (min(xs) + max(xs)) / 2, (min(ys) + max(ys)) / 2
+        half = max((max(max(xs) - min(xs), max(ys) - min(ys))) / 2 * 1.2, 60.0)
+        scale = min(w, h) / 2 / half
+        self.tf = (cx, cy, scale, w, h)
+
+        def px(x, y):
+            return w / 2 + (x - cx) * scale, h / 2 - (y - cy) * scale
+
+        c.delete("all")
+        # grid with cm labels
+        step = self._grid_step(2 * half * w / min(w, h))
+        gx = math.floor((cx - w / 2 / scale) / step) * step
+        while gx <= cx + w / 2 / scale:
+            x0, _ = px(gx, 0)
+            c.create_line(x0, 0, x0, h, fill="#1c2430" if gx else "#2f3b4d")
+            c.create_text(x0 + 3, h - 3, text=f"{gx:g}", anchor="sw", fill="#4d5b6e", font=(FONT, 7))
+            gx += step
+        gy = math.floor((cy - h / 2 / scale) / step) * step
+        while gy <= cy + h / 2 / scale:
+            _, y0 = px(0, gy)
+            c.create_line(0, y0, w, y0, fill="#1c2430" if gy else "#2f3b4d")
+            c.create_text(3, y0 - 2, text=f"{gy:g} cm", anchor="sw", fill="#4d5b6e", font=(FONT, 7))
+            gy += step
+        # plan (dashed grey) from the car through the waypoints
+        if self.waypoints:
+            line = [px(tr.x, tr.y)] + [px(x, y) for x, y in self.waypoints]
+            c.create_line(*[v for p in line for v in p], fill="#8b949e", dash=(5, 4))
+            for i, (x, y) in enumerate(self.waypoints, 1):
+                X, Y = px(x, y)
+                c.create_oval(X - 6, Y - 6, X + 6, Y + 6, outline="#d29922", width=2)
+                c.create_text(X, Y - 14, text=str(i), fill="#d29922", font=(FONT, 9, "bold"))
+        # travelled path, coloured by phase
+        stride = max(1, len(pts) // 3000)
+        shown = pts[::stride] + ([pts[-1]] if stride > 1 else [])
+        run, colour = [], None
+        for x, y, phase in shown:
+            col = ACCENT if phase == "out" else GOOD
+            if colour is not None and col != colour and len(run) >= 2:
+                c.create_line(*run, fill=colour, width=3, capstyle="round", joinstyle="round")
+                run = run[-2:]
+            colour = col
+            run += list(px(x, y))
+        if len(run) >= 4:
+            c.create_line(*run, fill=colour, width=3, capstyle="round", joinstyle="round")
+        # start marker
+        sx, sy = px(0, 0)
+        c.create_oval(sx - 6, sy - 6, sx + 6, sy + 6, outline=TEXT, width=2)
+        c.create_text(sx + 10, sy + 10, text="start", anchor="nw", fill=TEXT, font=(FONT, 8))
+        # the car (triangle pointing the way it faces; heading + = left / counter-clockwise)
+        hr = math.radians(tr.heading)
+        fx, fy = -math.sin(hr), -math.cos(hr)      # forward, in pixels
+        rx, ry = math.cos(hr), -math.sin(hr)       # right, in pixels
+        X, Y = px(tr.x, tr.y)
+        tip = (X + fx * 14, Y + fy * 14)
+        bl = (X - fx * 8 - rx * 8, Y - fy * 8 - ry * 8)
+        br = (X - fx * 8 + rx * 8, Y - fy * 8 + ry * 8)
+        c.create_polygon(*tip, *bl, *br, fill=WARN if self.app.runner.active else "#f0f6fc", outline="")
+
+        self.pos_var.set(f"Position  x {tr.x:+.0f} cm   y {tr.y:+.0f} cm      Heading {wrap180(tr.heading):+.0f}°\n"
+                         f"Driven {tr.total_cm:.0f} cm in total      Corners recorded: {len(tr.corners) - 1}")
+        self.status_var.set(self.app.runner.status)
+
+
 # ---------------------------------------------------------------- dashboard
 class Dashboard:
     def __init__(self, root):
@@ -269,9 +712,22 @@ class Dashboard:
         self.pitch_var = tk.StringVar(value="Front-back tilt: --")
         self.roll_var = tk.StringVar(value="Side tilt: --")
         self.rotate_var = tk.StringVar(value=CAMERA_ROTATE)
+        self.run_status_var = tk.StringVar(value="")       # progress of turns / planned path / return
         self.photo = None
         self.last_frame_id = -1
         self.saved = 0
+
+        # Path map: dead reckoning from the gyro heading + motor commands (no encoders)
+        self.tracker = PathTracker()
+        self.runner = PathRunner(self.tracker, self._runner_send, lambda: int(self.car_speed.get()),
+                                 lambda: self.dist_cm, self._runner_finished)
+        self.path_window = None
+        self.dist_cm = None            # latest distance reading, None = nothing in range
+        self.gz = 0.0                  # latest turning speed (deg/s)
+        self._yaw_resync = True        # the car's yaw was zeroed / it rebooted: don't treat the jump as a turn
+        self._runner_sending = False
+        self._last_tick = time.monotonic()
+        self._pressed_button = False
 
         self._build_ui()
 
@@ -320,6 +776,7 @@ class Dashboard:
         self.car_badge.pack(side="right")
         self.cam_badge = self._badge(header, "CAMERA (WiFi)", self.cam_text)
         self.cam_badge.pack(side="right", padx=(0, 8))
+        self._button(header, "Path map", self.open_path_window).pack(side="right", padx=(0, 8))
 
         # camera column
         left = tk.Frame(root, bg=BG)
@@ -340,6 +797,7 @@ class Dashboard:
         combo.bind("<<ComboboxSelected>>", lambda e: setattr(self.camera, "rotate", ROTATIONS[self.rotate_var.get()]))
         self.cam_info = tk.Label(bar, text="", bg=CARD, fg=MUTED, font=(FONT, 9))
         self.cam_info.pack(side="right")
+        tk.Label(bar, textvariable=self.run_status_var, bg=CARD, fg=WARN, font=(FONT, 10, "bold")).pack(side="left", padx=(16, 0))
 
         # right column
         right = tk.Frame(root, bg=BG)
@@ -380,6 +838,9 @@ class Dashboard:
         drive_card.grid(row=2, column=0, sticky="ew", pady=(10, 0))
         for c in range(3):
             dr.columnconfigure(c, weight=1)
+        # corner buttons: turn in place by an exact angle with the gyro (to test how accurate it is)
+        for label, delta, r, c in (("↶ 90°", 90, 0, 0), ("↷ -90°", -90, 0, 2), ("↶ 180°", 180, 2, 0)):
+            self._button(dr, label, lambda dlt=delta: self.turn_by(dlt)).grid(row=r, column=c, padx=3, pady=3, sticky="nsew")
         pad = [("▲", "U", 0, 1), ("◀", "L", 1, 0), ("STOP", "S", 1, 1), ("▶", "R", 1, 2), ("▼", "D", 2, 1)]
         for label, cmd, r, c in pad:
             b = self._button(dr, label, None, big=True, danger=(cmd == "S"))
@@ -387,9 +848,9 @@ class Dashboard:
             if cmd == "S":
                 b.configure(command=lambda: self._send("S"))
             else:
-                b.bind("<ButtonPress-1>", lambda e, k=cmd: self._send(k))
-                b.bind("<ButtonRelease-1>", lambda e: self._send("S"))
-                b.bind("<Leave>", lambda e: self._send("S"))
+                b.bind("<ButtonPress-1>", lambda e, k=cmd: self._drive_button(k))
+                b.bind("<ButtonRelease-1>", lambda e: self._drive_button_release())
+                b.bind("<Leave>", lambda e: self._drive_button_release())  # only stops if the button was held
         # one speed slider for all wheels (sent as P<percent>)
         self.speed_dragging, self.last_speed_send, self.pending_speed = False, 0.0, None
         speed_row = tk.Frame(dr, bg=CARD)
@@ -473,6 +934,7 @@ class Dashboard:
             pass
         self._refresh_camera()
         self._refresh_badges()
+        self._path_tick()
         if not self.closing:
             self.root.after(30, self._pump)
 
@@ -548,6 +1010,7 @@ class Dashboard:
         bar = self.dist_bar
         bar.delete("all")
         w = max(bar.winfo_width(), 1)
+        self.dist_cm = None if cm < 0 else cm
         if cm < 0:
             self.dist_var.set("--")
             self.dist_note.set("nothing in range")
@@ -569,13 +1032,17 @@ class Dashboard:
             yaw, pitch, roll, gx, gy, gz, ax, ay, az = (float(v) for v in text.split(","))
         except ValueError:
             return
-        self._post(lambda: self._show_mpu(yaw * YAW_SIGN, pitch * PITCH_SIGN, roll * ROLL_SIGN, gz * YAW_SIGN))
+        stamp = time.monotonic()       # when the reading arrived (the UI thread handles it a moment later)
+        self._post(lambda: self._show_mpu(yaw * YAW_SIGN, pitch * PITCH_SIGN, roll * ROLL_SIGN, gz * YAW_SIGN, stamp))
 
     @staticmethod
     def _describe(value, positive, negative):
         return "level" if abs(value) < 1 else f"{abs(value):.0f}° {positive if value > 0 else negative}"
 
-    def _show_mpu(self, yaw, pitch, roll, gz):
+    def _show_mpu(self, yaw, pitch, roll, gz, stamp=None):
+        self.tracker.feed_yaw(yaw, resync=self._yaw_resync, gz=gz, now=stamp)
+        self._yaw_resync = False
+        self.gz = gz
         self.heading_deg = yaw
         if abs(yaw) < 1:
             self.heading_var.set("Straight (0°)")
@@ -597,6 +1064,8 @@ class Dashboard:
         self.pitch_var.set("Front-back tilt: --")
         self.roll_var.set("Side tilt: --")
         self.heading_deg = 0.0
+        self.dist_cm = None
+        self._yaw_resync = True        # the car may have rebooted: its yaw starts from 0 again
         self._draw_dial()
 
     # ---- BLE ----------------------------------------------------------
@@ -668,7 +1137,128 @@ class Dashboard:
     def _send(self, message):
         if not self.connected.is_set() or not self.loop or not self.loop.is_running():
             return
+        if message in ("U", "D", "L", "R", "S"):
+            if self.runner.active and not self._runner_sending:
+                self.runner.abort("manual control")       # you touched the controls: take over
+            self.tracker.set_command(message)
+        elif message in ("Z", "C"):
+            self._yaw_resync = True                        # the car zeroes its heading on these
         asyncio.run_coroutine_threadsafe(self._write(message), self.loop)
+
+    def _runner_send(self, message):
+        self._runner_sending = True
+        try:
+            self._send(message)
+        finally:
+            self._runner_sending = False
+
+    def _drive_button(self, cmd):
+        self._pressed_button = True
+        self._send(cmd)
+
+    def _drive_button_release(self):
+        if self._pressed_button:
+            self._pressed_button = False
+            self._send("S")
+
+    # ---- path map: dead reckoning, plan, return -----------------------
+    def open_path_window(self):
+        if self.path_window is None:
+            self.path_window = PathWindow(self)
+        else:
+            self.path_window.win.lift()
+
+    def _path_ready(self):
+        if not self.connected.is_set():
+            self.runner.status = "Car not connected"
+            return False
+        return True
+
+    def _path_tick(self):
+        now = time.monotonic()
+        dt = min(now - self._last_tick, 0.2)
+        self._last_tick = now
+        if not self.connected.is_set():
+            if self.runner.active:
+                self.runner.abort("car disconnected")
+            self.tracker.set_command("S")
+            return
+        self.tracker.update(dt, int(self.car_speed.get()), now)
+        self.run_status_var.set("" if self.runner.status == "Idle" else self.runner.status)
+        if self.runner.active:
+            self.runner.tick(now, self.gz)
+        if self.path_window is not None:
+            self.path_window.refresh()
+
+    def path_return(self):
+        """Drive the recorded path backwards: undo every move and turn, newest first."""
+        if not self._path_ready() or self.runner.active:
+            return
+        self._send("S")
+        steps = return_steps(self.tracker.corners)
+        if not steps:
+            self.runner.status = "Nothing recorded to return along"
+            return
+        self.tracker.recording, self.tracker.phase = False, "back"
+        self.runner.start(steps, "Return", time.monotonic())
+
+    def turn_by(self, delta):
+        """Turn in place by `delta` degrees (+ = left) using the gyro, then report how close it got."""
+        if not self._path_ready() or self.runner.active:
+            return
+        self._send("S")
+        self.runner.start([["turn_to", self.tracker.heading + delta]], f"Turn {delta:+d}°", time.monotonic())
+
+    def path_run_plan(self, waypoints):
+        """Drive from here through the waypoints clicked on the map (recorded, so it can be returned along)."""
+        if not self._path_ready() or self.runner.active:
+            return
+        self._send("S")
+        steps = plan_steps(waypoints)
+        if not steps:
+            self.runner.status = "Click waypoints on the map first"
+            return
+        self.tracker.recording, self.tracker.phase = True, "out"
+        self.runner.start(steps, "Run path", time.monotonic())
+
+    def path_abort(self):
+        self.runner.abort("aborted by you")
+        self._send("S")
+
+    def path_clear(self):
+        self.runner.abort("path cleared")
+        self.tracker.recording = True
+        self.tracker.reset()
+        if self.path_window is not None:
+            self.path_window.refresh(force=True)
+
+    def _runner_finished(self, ok):
+        self.tracker.recording, self.tracker.phase = True, "out"
+        if ok and self.runner.label == "Return":
+            self.tracker.corners = [(self.tracker.x, self.tracker.y)]   # back home: nothing left to undo
+
+    def path_test_drive(self):
+        """Drive straight for TEST_DRIVE_S, then ask how far the car really went to calibrate cm/s."""
+        if not self._path_ready() or self.runner.active:
+            return
+        speed = int(self.car_speed.get())
+        self.runner.status = f"Test drive: {TEST_DRIVE_S:.0f} s at {speed}% ... measure how far it goes"
+        self._send("U")
+        self.root.after(int(TEST_DRIVE_S * 1000), lambda: self._finish_test_drive(speed))
+
+    def _finish_test_drive(self, speed):
+        self._send("S")
+        parent = self.path_window.win if self.path_window else self.root
+        measured = simpledialog.askfloat("Calibrate", "How far did the car really move (cm)?", parent=parent,
+                                         minvalue=1, maxvalue=2000)
+        if measured:
+            self.tracker.cm_per_s_100 = measured / TEST_DRIVE_S / (speed / 100.0)
+            if self.path_window:
+                self.path_window.speed_var.set(f"{self.tracker.cm_per_s_100:.1f}")
+            self.runner.status = f"Calibrated: {self.tracker.cm_per_s_100:.1f} cm/s at 100%"
+        else:
+            self.runner.status = "Calibration cancelled"
+        self.path_clear()                  # the test drive isn't part of any real path
 
     # ---- wheel speed (one slider for all wheels) ----------------------
     def _speed_changed(self, value):
