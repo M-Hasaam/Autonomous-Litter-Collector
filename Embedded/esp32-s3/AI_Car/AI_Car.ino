@@ -267,6 +267,13 @@ void calibrateGyro() {
 }
 
 bool mpuInit() {
+  // If SDA or SCL is held low (short to GND, unpowered module, missing ground) the I2C driver
+  // can crash the whole board. Check the lines first and skip the MPU instead of crashing.
+  Wire.end();
+  pinMode(MPU_SDA_PIN, INPUT_PULLUP);
+  pinMode(MPU_SCL_PIN, INPUT_PULLUP);
+  delay(2);
+  if (digitalRead(MPU_SDA_PIN) == LOW || digitalRead(MPU_SCL_PIN) == LOW) return false;
   Wire.begin(MPU_SDA_PIN, MPU_SCL_PIN);
   Wire.setClock(400000);
 
@@ -319,13 +326,19 @@ void updateMpu() {
       if (mpuOk) {
         Serial.println("MPU-6050 ready");
       } else {
-        Serial.print("MPU not found. I2C devices:");
-        int found = 0;
-        for (uint8_t a = 1; a < 127; a++) {
-          Wire.beginTransmission(a);
-          if (Wire.endTransmission() == 0) { Serial.printf(" 0x%02X", a); found++; }
+        if (digitalRead(MPU_SDA_PIN) == LOW || digitalRead(MPU_SCL_PIN) == LOW) {
+          Serial.println("MPU not found: SDA/SCL held LOW (short to GND, no power or no ground on the MPU?)");
+        } else {
+          Serial.print("MPU not found. I2C devices:");
+          int found = 0;
+          Wire.begin(MPU_SDA_PIN, MPU_SCL_PIN);
+          for (uint8_t a = 1; a < 127; a++) {
+            Wire.beginTransmission(a);
+            if (Wire.endTransmission() == 0) { Serial.printf(" 0x%02X", a); found++; }
+          }
+          Wire.end();
+          Serial.println(found ? "" : " none");
         }
-        Serial.println(found ? "" : " none");
       }
     }
     return;
