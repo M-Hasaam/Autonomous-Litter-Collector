@@ -1,0 +1,5 @@
+Low-angle, front-view floor frames of crumpled paper balls (real camera, wood/tile floor).
+Source: Roboflow project paper-ball-detection-2m6mz, version 1 (workspace m-hamza-20zst), licence CC BY 4.0.
+Imported from paper-ball-detection.v1i.yolov11.zip. 199 frames, single class (index 0 = paper ball), 640x480.
+Re-split in blocks of 10 consecutive frames (train/valid/test) so neighbouring, near-identical frames do not leak between splits.
+File names fixed: the 'floow' typo became 'floor', the Roboflow hash suffix was dropped.

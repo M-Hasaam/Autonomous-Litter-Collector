@@ -45,13 +45,16 @@ def prepare_yaml(data_yaml, out_path):
         entry = cfg.get(split) or ({"val": cfg.get("valid")}.get(split))
         if not entry:
             continue
-        folder = find_split(data_yaml.parent, str(entry))
-        if folder is None:
+        entries = entry if isinstance(entry, list) else [entry]
+        folders = [find_split(data_yaml.parent, str(e)) for e in entries]
+        if any(f is None for f in folders):
             print(f"WARNING: cannot find the '{split}' images folder ({entry})")
-            continue
-        count = sum(1 for p in folder.rglob("*") if p.suffix.lower() in IMAGE_SUFFIXES)
-        print(f"{split}: {count} images in {folder}")
-        resolved[split] = str(folder)
+            folders = [f for f in folders if f is not None]
+            if not folders:
+                continue
+        count = sum(1 for folder in folders for p in folder.rglob("*") if p.suffix.lower() in IMAGE_SUFFIXES)
+        print(f"{split}: {count} images in {', '.join(str(f) for f in folders)}")
+        resolved[split] = str(folders[0]) if len(folders) == 1 else [str(f) for f in folders]
     if "train" not in resolved or "val" not in resolved:
         sys.exit("ERROR: need both a train and a validation (valid) folder")
     out_path.parent.mkdir(exist_ok=True)

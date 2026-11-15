@@ -33,7 +33,7 @@ MIN_ASPECT, MAX_ASPECT = 0.5, 2.0               # box width/height (in pixels) a
 MAX_SIDE = 1280
 MIN_TEST = 25                                   # a held-out "test 1" split: the cleaned export has none
 MIN_VALID = 30                                  # the export's own validation set is tiny once cleaned: top it up
-KEEP = "test2"
+KEEP = {"test2", "lowcam_front"}               # hand-labelled / separately imported sets: never deleted
 TURNS = {"raw": None, "cw": cv2.ROTATE_90_CLOCKWISE, "ccw": cv2.ROTATE_90_COUNTERCLOCKWISE}
 
 
@@ -72,7 +72,7 @@ def main():
         raise SystemExit(f"{SRC} not found: unzip the Roboflow export there first")
     if DST.exists():
         for child in DST.iterdir():   # clear the contents, not the folder itself (Windows refuses if a shell is inside it)
-            if child.name == KEEP:    # test2 = real ESP32-CAM pictures that are labelled by hand: never delete them
+            if child.name in KEEP:    # test2 = real ESP32-CAM pictures that are labelled by hand: never delete them
                 continue
             shutil.rmtree(child) if child.is_dir() else child.unlink()
     kept, dropped = {}, {"stock": 0, "unsure": 0}
@@ -125,7 +125,16 @@ def main():
             shutil.move(str(DST / "train" / "labels" / (img.stem + ".txt")), DST / "test" / "labels" / (img.stem + ".txt"))
         kept["train"] -= MIN_TEST - len(test_images)
         kept["test"] = MIN_TEST
-    (DST / "data.yaml").write_text("train: train/images\nval: valid/images\ntest: test/images\nnc: 1\nnames: ['paper']\n")
+    extra = "lowcam_front"   # imported low-angle camera frames, kept next to the cleaned export (see its SOURCE.txt)
+
+    def entry(split):
+        paths = [f"{split}/images"]
+        if (DST / extra / split / "images").is_dir():
+            paths.append(f"{extra}/{split}/images")
+        return paths[0] if len(paths) == 1 else "[" + ", ".join(paths) + "]"
+
+    (DST / "data.yaml").write_text(
+        f"train: {entry('train')}\nval: {entry('valid')}\ntest: {entry('test')}\nnc: 1\nnames: ['paper']\n")
     print(f"kept {kept}; dropped {dropped}; phone photos as-is / turned cw / turned ccw: {turned['raw']} / {turned['cw']} / {turned['ccw']}")
     print(f"-> {DST}")
 
