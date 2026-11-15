@@ -1,6 +1,6 @@
 # Paper-ball detector test page
 
-A single static page (`index.html`) that runs `roboflow-paperball.onnx` (YOLO11n, 640x640, 1 class) in the browser with
+A single static page (`index.html`) that runs `roboflow-paperball.onnx` (v2.0, YOLO11n, 640x640, 1 class) in the browser with
 onnxruntime-web (WASM, loaded from a CDN). It opens the phone camera, draws the boxes live and shows the time per frame.
 "Pick photo" tests one picture; the confidence slider shows weaker detections. No picture leaves the device.
 

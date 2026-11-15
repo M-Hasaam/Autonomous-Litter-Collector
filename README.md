@@ -9,32 +9,41 @@ servo arm, PC tools and an Android app that runs the detector on the phone. The 
 
 Open it on a phone (Safari or Chrome), tap *Start camera* and point it at a paper ball, then at things that are not paper balls
 (other balls, socks, bags, white walls). The model runs **inside your browser, on your device**; nothing is uploaded. "Pick photo"
-tests a single picture and the slider shows weaker detections. Source: [docs/paperball-test/](docs/paperball-test/).
+tests a single picture and the slider shows weaker detections. It runs the v2.0 model. Source: [docs/paperball-test/](docs/paperball-test/).
 
-## Paper-ball detector: v1 results
+## Paper-ball detector: results
 
-YOLO11n fine-tuned on the Roboflow "paper" set (248 train / 30 valid). Released as [v1.0](https://github.com/M-Hasaam/Autonomous-Litter-Collector/releases/tag/v1.0)
-(`roboflow-paperball.pt` and `.onnx`).
+**Current model: v2.0** ([release](https://github.com/M-Hasaam/Autonomous-Litter-Collector/releases/tag/v2.0), `roboflow-paperball.pt` / `.onnx`).
+YOLO11n fine-tuned for 80 epochs (best epoch 70) on 697 training pictures: the cleaned Roboflow set, 271 pictures **without** paper balls,
+low-angle floor frames and real desk frames (see the dataset below). Scores on pictures the model never trained on:
 
 | Set | Pictures | Precision | Recall | mAP50 | mAP50-95 |
 |---|---|---|---|---|---|
-| valid | 30 | 0.993 | 1.000 | 0.995 | 0.735 |
-| test1 (same kind as the training data) | 25 | 0.948 | 0.964 | 0.939 | 0.743 |
-| test2 (real ESP32-CAM, hand-labelled) | 23 | 0.985 | 0.913 | 0.915 | 0.678 |
+| valid | 124 | 0.987 | 1.000 | 0.995 | 0.780 |
+| test1 (same kind as the training data) | 25 | 1.000 | 0.997 | 0.995 | 0.799 |
+| test2 (real ESP32-CAM, hand-labelled) | 23 | 1.000 | 0.913 | 0.992 | 0.855 |
+| lowcam_front (low-angle floor camera) | 29 | 1.000 | 0.998 | 0.995 | 0.829 |
+| agilex_desk (desk frames, automatic labels) | 11 | 0.993 | 1.000 | 0.995 | 0.734 |
+
+**False detections.** v1 drew a box on other white or bright surfaces. On 48 held-out pictures with no paper ball (balls, round food, bags,
+floors, walls) at confidence 0.25: **v1 gave false boxes on 38 of 48, v2 on 1 of 48** (0 at confidence 0.5).
 
 Predictions (green = label, red = model):
 
-![test1 predictions](Training/paper_ball_detector/results/test1.png)
-![test2 predictions](Training/paper_ball_detector/results/test2.png)
+![test2 predictions](Training/paper_ball_detector/results/v2/test2.png)
+![test1 predictions](Training/paper_ball_detector/results/v2/test1.png)
+![lowcam_front predictions](Training/paper_ball_detector/results/v2/lowcam_front.png)
 
-**Known limitation.** v1 sometimes detects other white or bright surfaces as paper balls and can miss very blurry frames, because
-the first dataset had almost no background-only pictures. After these results I fixed five sideways frames in test2 and one wrong
-label in test1. With those corrections the same v1 model scores (confidence 0.25, IoU 0.5): test 28 correct / 5 false / 0 missed,
-test2 20 correct / 2 false / 3 missed.
+**Limitations.** The test sets are small and almost saturated (about 0.995), so they cannot separate close models; the false-detection check above
+uses internet pictures, not your own floor; very blurry frames can still be missed (test2 recall 0.913); agilex_desk labels are automatic.
+Collecting real-camera pictures, including ones without a paper ball, is the next step. Scores, sheets and the per-epoch log are in
+`Training/paper_ball_detector/results/v2/`.
 
-**v2 (not trained yet)** adds the data below: hard negatives, low-angle frames and desk frames, and optionally synthetic
-"paper ball next to other balls" pictures. The plan is to train twice (with and without the synthetic pictures) and keep the model that
-does better on the **real-camera** test sets.
+**Also tried:** adding 120 synthetic "paper ball next to other balls" pictures to training (`data_with_confusion.yaml`). It did not help on the real-camera
+tests (test2 mAP50-95 0.731 vs 0.855, 2 vs 1 pictures with a false box), so v2 does not use them.
+
+**v1.0** ([release](https://github.com/M-Hasaam/Autonomous-Litter-Collector/releases/tag/v1.0)): trained on the Roboflow set only (248 train / 30 valid),
+mAP50 0.995 valid / 0.939 test1 / 0.915 test2 on the original, uncorrected test sets (`results/v1/`). Its weakness was the false detections above.
 
 ## Dataset (`Training/paper_ball_detector/dataset/`)
 
@@ -63,7 +72,7 @@ All in `Training/paper_ball_detector/`:
 | Score a model | `python evaluate_on_camera.py --set all` (test1, test2, lowcam_front, agilex_desk) |
 | Put a model in the Android app | `python export_model.py --weights roboflow-paperball.pt --install` |
 | Rebuild data | `fetch_negatives.py`, `fetch_hf_balls.py`, `make_confusion.py`, `import_agilex.py` |
-| Try the model in the browser | replace the `.onnx` in `docs/paperball-test/`, push |
+| Try the model in the browser | replace the `.onnx` in `docs/paperball-test/` with the new export, push |
 
 ## Repository layout
 
