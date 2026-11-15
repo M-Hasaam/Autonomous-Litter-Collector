@@ -1,11 +1,14 @@
-# Autonomous Litter Collector (LitterVision)
+# Embedded AI Paperball Collector
 
-A small robot that finds litter with a camera and a YOLO model: an ESP32-CAM / ESP32 Wi-Fi bridge for the camera, an ESP32-S3 car with
-servo arm, PC tools and an Android app that runs the detector on the phone. The first target is **crumpled paper balls on the floor**.
+*(formerly "Autonomous Litter Collector" / LitterVision)*
+
+An AI-based embedded robot that finds **crumpled paper balls on the floor**: a YOLO11n detector runs on a phone or in a browser, and the robot hardware
+is an ESP32-CAM / ESP32 Wi-Fi camera bridge, an ESP32-S3 car with a servo arm, PC tools and an Android app. The detector is trained and evaluated in
+this repository; litter in general is the longer-term goal.
 
 ## Try the paper-ball detector in your browser
 
-**https://m-hasaam.github.io/Autonomous-Litter-Collector/paperball-test/**
+**https://m-hasaam.github.io/Embedded-AI-Paperball-Collector/paperball-test/**
 
 Open it on a phone (Safari or Chrome), tap *Start camera* and point it at a paper ball, then at things that are not paper balls
 (other balls, socks, bags, white walls). The model runs **inside your browser, on your device**; nothing is uploaded. "Pick photo"
@@ -13,7 +16,7 @@ tests a single picture and the slider shows weaker detections. It lets you switc
 
 ## Paper-ball detector: results
 
-**Current model: v2.1** ([release](https://github.com/M-Hasaam/Autonomous-Litter-Collector/releases/tag/v2.1), `roboflow-paperball.pt` / `.onnx`).
+**Current model: v2.1** ([release](https://github.com/M-Hasaam/Embedded-AI-Paperball-Collector/releases/tag/v2.1), `roboflow-paperball.pt` / `.onnx`).
 YOLO11n fine-tuned on 817 training pictures: the cleaned Roboflow set, 271 pictures **without** paper balls, low-angle floor frames, real desk frames
 and 120 synthetic "paper ball pasted onto other-ball backgrounds" pictures (see the dataset below). Early stopping ended training at epoch 64
 (best epoch 34). Scores on pictures the model never trained on:
@@ -45,10 +48,10 @@ Collecting real-camera pictures on several floors, including ones without a pape
 `Training/paper_ball_detector/results/v2.1/`.
 
 **Earlier versions**
-* **v2.0** ([release](https://github.com/M-Hasaam/Autonomous-Litter-Collector/releases/tag/v2.0)): same data without the 120 synthetic pictures (697 training pictures, 80 epochs).
+* **v2.0** ([release](https://github.com/M-Hasaam/Embedded-AI-Paperball-Collector/releases/tag/v2.0)): same data without the 120 synthetic pictures (697 training pictures, 80 epochs).
   Tighter boxes on the formal tests (test2 mAP50-95 0.855) and 1 false picture out of 48, but it missed every ball in the real-world test, so it is **superseded by v2.1**
   (`results/v2.0/`). Both are selectable in the browser test page.
-* **v1.0** ([release](https://github.com/M-Hasaam/Autonomous-Litter-Collector/releases/tag/v1.0)): the Roboflow set only (248 train / 30 valid),
+* **v1.0** ([release](https://github.com/M-Hasaam/Embedded-AI-Paperball-Collector/releases/tag/v1.0)): the Roboflow set only (248 train / 30 valid),
   mAP50 0.995 valid / 0.939 test1 / 0.915 test2 on the original, uncorrected test sets (`results/v1/`). It boxed other white or bright surfaces.
 
 ## Dataset (`Training/paper_ball_detector/dataset/`)
