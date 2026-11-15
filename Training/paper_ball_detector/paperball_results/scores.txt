@@ -1,0 +1,4 @@
+set    pictures  precision   recall   mAP50  mAP50-95
+valid        30      0.993    1.000   0.995     0.735
+test1        25      0.948    0.964   0.939     0.743
+test2        23      0.985    0.913   0.915     0.678
