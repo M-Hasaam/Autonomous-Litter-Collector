@@ -46,7 +46,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-private const val MODEL_NOTE = "YOLO11n pretrained (COCO general objects, not litter-specific)"
+private const val MODEL_NOTE = "Paper-ball detector v2.1 (YOLO11n, runs on this phone)"
 
 @Composable
 fun CameraScreen() {
@@ -126,7 +126,7 @@ fun CameraScreen() {
                 is DetectorState.Failed -> state.message
                 is DetectorState.Ready ->
                     "$MODEL_NOTE\n" +
-                        "${state.result.detections.size} objects, ${state.result.inferenceMs} ms"
+                        "${state.result.detections.size} paper balls, ${state.result.inferenceMs} ms"
                 null -> "$MODEL_NOTE\nLoading model..."
             }
             Text(

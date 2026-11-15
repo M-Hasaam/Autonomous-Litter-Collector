@@ -98,9 +98,11 @@ docs/
 
 ## Android app status
 
-The app runs a YOLO model fully on the phone (CameraX + LiteRT, no cloud). The model currently installed in
-`Mobile_app/app/src/main/assets/` is the **generic pretrained YOLO11n (COCO classes), not the paper-ball model**. Install the paper-ball
-model with `export_model.py --install` (see above). The app has been built, but not yet tested on a device.
+The app runs a YOLO model fully on the phone (CameraX + LiteRT, no cloud). It now contains the **paper-ball model v2.1**
+(`Mobile_app/app/src/main/assets/litter_detector.tflite`, float32, plus `labels.txt` with the single class `paper`). The conversion was checked:
+the TFLite file gives the same boxes and scores as the ONNX model on test pictures, and the debug APK builds. It has **not been run on a device yet**
+(only an iPhone was available), so the on-phone speed and camera behaviour are untested. To switch models:
+`python export_model.py --weights <checkpoint>.pt --install` in `Training/paper_ball_detector/` (needs ultralytics 8.3.x and onnx2tf; see the script).
 
 ## Licences
 

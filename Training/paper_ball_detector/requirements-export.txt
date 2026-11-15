@@ -1,0 +1,24 @@
+# Environment for export_model.py (checkpoint -> ONNX -> onnx2tf -> float32 TFLite for the Android app).
+# Verified on Windows 11, Python 3.12, with a venv inside this folder (the "venv/" folder is git-ignored):
+#   python -m venv venv
+#   venv\Scripts\python -m pip install -r requirements-export.txt
+#   venv\Scripts\python -m pip install --no-deps ultralytics==8.3.100
+#   venv\Scripts\python -m pip install opencv-python pillow requests scipy tqdm psutil py-cpuinfo pandas matplotlib seaborn ultralytics-thop torchvision
+# Why the separate ultralytics line: it declares numpy<=2.1.1 but the export works with numpy 2.2.6, so pip cannot resolve both.
+# Do NOT install ai-edge-litert on a PC where Windows Application Control blocks its DLL: onnx2tf 2.6.9 only imports it for optional
+# checks, so put a tiny stand-in package in the venv instead (venv\Lib\site-packages\ai_edge_litert\__init__.py empty, and
+# venv\Lib\site-packages\ai_edge_litert\interpreter.py containing:
+#   from tensorflow.lite.python.interpreter import Interpreter, load_delegate
+torch>=2.2
+numpy==2.2.6
+tensorflow==2.21.0
+tf_keras==2.21.0
+onnx==1.20.1
+onnx2tf==2.6.9
+onnxruntime
+onnxslim
+onnxsim
+sng4onnx
+sne4onnx
+onnx_graphsurgeon
+PyYAML
