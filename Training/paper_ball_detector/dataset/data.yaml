@@ -1,0 +1,8 @@
+# Real data only: the cleaned Roboflow set (normal), internet negatives, low-angle camera frames and desk frames.
+# (confusion/ = synthetic composites is NOT included here: see data_with_confusion.yaml)
+# Folders: <split>/<source>/{images,labels}. Held-out test sets are listed in test/*.yaml (test1, test2, ...).
+train: [train/normal/images, train/negative/images, train/lowcam_front/images, train/agilex_desk/images]
+val: [valid/normal/images, valid/negative/images, valid/lowcam_front/images, valid/agilex_desk/images]
+test: [test/test1/images, test/lowcam_front/images, test/agilex_desk/images]
+nc: 1
+names: ['paper']

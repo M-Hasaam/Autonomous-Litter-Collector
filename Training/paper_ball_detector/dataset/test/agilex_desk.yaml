@@ -1,0 +1,5 @@
+# Held-out test set agilex_desk (never used for training). Folders: agilex_desk/{images,labels}
+train: agilex_desk/images
+val: agilex_desk/images
+names:
+  0: paper

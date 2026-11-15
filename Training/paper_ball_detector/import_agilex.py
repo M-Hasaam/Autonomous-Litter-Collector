@@ -10,7 +10,7 @@ huge blobs. Brown crumpled paper is labelled as paper too. Also keeps EMPTY_PER_
 Split by episode (never by frame) so near-identical frames do not leak between train / valid / test.
 THE LABELS ARE AUTOMATIC: look at the pictures before training.
 
-Output: dataset_fixed/agilex_desk/{train,valid,test}/{images,labels} + SOURCE.txt
+Output: dataset/{train,valid,test}/agilex_desk/{images,labels} + dataset/SOURCES/agilex_desk.txt
 Run:  python import_agilex.py --videos <folder with ep000000.mp4 ... ep000019.mp4>      (needs av, opencv-python, numpy)
 Videos: https://huggingface.co/datasets/villekuosmanen/agilex_gather_paper_ball  videos/chunk-000/observation.images.cam_high/
 """
@@ -22,7 +22,7 @@ import cv2
 import numpy as np
 
 HERE = Path(__file__).resolve().parent
-OUT = HERE / "dataset_fixed" / "agilex_desk"
+DATA = HERE / "dataset"
 STEP, PER_EPISODE, EMPTY_PER_EPISODE = 15, 8, 1
 SPLITS = {"train": range(0, 14), "valid": range(14, 17), "test": range(17, 20)}
 DESK_Y = (150, 340)                  # ball centres lie on the desk strip (pixels of the 480-high frame); lower = exposure flicker
@@ -67,7 +67,7 @@ def main():
     notes = []
     for split, episodes in SPLITS.items():
         for sub in ("images", "labels"):
-            d = OUT / split / sub
+            d = DATA / split / "agilex_desk" / sub
             d.mkdir(parents=True, exist_ok=True)
             for old in d.glob("*"):
                 old.unlink()
@@ -85,16 +85,16 @@ def main():
             for i, img, boxes in spread(hits, PER_EPISODE) + spread(empties[-3:], EMPTY_PER_EPISODE):
                 h, w = img.shape[:2]
                 stem = f"agilex_ep{ep:02d}_f{i:04d}"
-                cv2.imwrite(str(OUT / split / "images" / (stem + ".jpg")), img, [cv2.IMWRITE_JPEG_QUALITY, 92])
-                (OUT / split / "labels" / (stem + ".txt")).write_text(
+                cv2.imwrite(str(DATA / split / "agilex_desk" / "images" / (stem + ".jpg")), img, [cv2.IMWRITE_JPEG_QUALITY, 92])
+                (DATA / split / "agilex_desk" / "labels" / (stem + ".txt")).write_text(
                     "".join(f"0 {(x + bw / 2) / w:.6f} {(y + bh / 2) / h:.6f} {bw / w:.6f} {bh / h:.6f}\n" for x, y, bw, bh in boxes))
                 notes.append(f"{split}/{stem}.jpg\t{len(boxes)} box(es)")
             print(split, "episode", ep, f"{len(hits)} usable frames")
-    (OUT / "SOURCE.txt").write_text(
+    (DATA / "SOURCES" / "agilex_desk.txt").write_text(
         "Frames from villekuosmanen/agilex_gather_paper_ball (Apache-2.0), camera cam_high, https://huggingface.co/datasets/"
         "villekuosmanen/agilex_gather_paper_ball\nLabels are AUTOMATIC (background subtraction, see import_agilex.py) - review before use. "
         "Split by episode: 0-13 train, 14-16 valid, 17-19 test.\n\nfile\tlabels\n" + "\n".join(notes) + "\n", encoding="utf-8")
-    print(f"-> {OUT}")
+    print(f"-> {DATA}/<train|valid|test>/agilex_desk")
 
 
 if __name__ == "__main__":

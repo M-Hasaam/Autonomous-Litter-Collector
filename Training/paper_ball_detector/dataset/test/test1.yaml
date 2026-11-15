@@ -1,0 +1,5 @@
+# Held-out test set test1 (never used for training). Folders: test1/{images,labels}
+train: test1/images
+val: test1/images
+names:
+  0: paper

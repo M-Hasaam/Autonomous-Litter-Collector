@@ -2,13 +2,13 @@
 
 Why: the detector must learn that a paper ball next to a football, an egg or a white sheet is still a paper ball, and the football
 is not. Real photos like that are rare, so each picture is made by cutting a labelled paper ball out of the cleaned dataset (soft
-elliptical edge) and pasting it, scaled / flipped / brightness-shifted, onto a background from negatives_internet/. Only the pasted
+elliptical edge) and pasting it, scaled / flipped / brightness-shifted, onto a background from the negative/ folders. Only the pasted
 paper balls are labelled; the other balls stay unlabelled, so they act as hard negatives in the same picture.
 Leakage is avoided: train composites use train backgrounds + train paper balls, valid composites use valid ones only.
 These are fakes (no matching shadows) - treat them as extra hard-negative training data, never as test data, and replace them with
 real photos of paper balls among other balls when you collect them.
 
-Output: dataset_fixed/confusion_composite/{train,valid}/{images,labels} + SOURCE.txt
+Output: dataset/{train,valid}/confusion/{images,labels} + dataset/SOURCES/confusion.txt
 Run:  python make_confusion.py [--train 120 --valid 24]      (needs opencv-python and numpy)
 """
 import argparse
@@ -19,8 +19,7 @@ import cv2
 import numpy as np
 
 HERE = Path(__file__).resolve().parent
-DATA, NEG = HERE / "dataset_fixed", HERE / "negatives_internet"
-OUT = DATA / "confusion_composite"
+DATA = HERE / "dataset"    # <split>/<source>/{images,labels}: used here are normal (paper balls) and negative (backgrounds)
 # backgrounds that look most like paper balls come first; plain surfaces fill up the rest
 ROUND = {"Ball (Object)", "Football", "Rugby ball", "Volleyball (Ball)", "Balloon", "Golf ball", "Tennis ball", "Egg", "Cotton",
          "Plastic bag", "Pillow", "Sock", "Garlic", "Onion", "Cabbage", "Cauliflower", "Coconut", "Pearl", "Ice cream", "Bowl",
@@ -36,8 +35,8 @@ def read_boxes(path):
 def cutouts(split):
     """Paper-ball crops (with a feathered elliptical alpha) from real, correctly labelled pictures of one split."""
     crops = []
-    for lab in sorted((DATA / split / "labels").glob("*.txt")):
-        img_path = DATA / split / "images" / (lab.stem + ".jpg")
+    for lab in sorted((DATA / split / "normal" / "labels").glob("*.txt")):
+        img_path = DATA / split / "normal" / "images" / (lab.stem + ".jpg")
         img = cv2.imread(str(img_path)) if img_path.is_file() else None
         if img is None:
             continue
@@ -57,11 +56,11 @@ def cutouts(split):
 
 def backgrounds(split):
     classes = {}
-    for line in (NEG / "SOURCES.txt").read_text(encoding="utf-8").splitlines()[1:]:
+    for line in (DATA / "SOURCES" / "negative.txt").read_text(encoding="utf-8").splitlines()[1:]:
         parts = line.split("\t")
         if len(parts) >= 2 and parts[0].startswith(split + "/"):
             classes[Path(parts[0]).stem] = parts[1]
-    paths = sorted((NEG / split / "images").glob("*.jpg"))
+    paths = sorted((DATA / split / "negative" / "images").glob("*.jpg"))
     round_first = [p for p in paths if classes.get(p.stem) in ROUND | ROUND_HF]
     return round_first + [p for p in paths if p not in round_first]
 
@@ -94,7 +93,7 @@ def main():
     notes = []
     for split, count in (("train", args.train), ("valid", args.valid)):
         for sub in ("images", "labels"):
-            d = OUT / split / sub
+            d = DATA / split / "confusion" / sub
             d.mkdir(parents=True, exist_ok=True)
             for old in d.glob("*"):
                 old.unlink()
@@ -108,14 +107,14 @@ def main():
                 x, y, w, h = paste(bg, crop, mask, rng)
                 rows.append(f"0 {x:.6f} {y:.6f} {w:.6f} {h:.6f}")
             stem = f"conf_{split}_{i:03d}_{bg_path.stem}"
-            cv2.imwrite(str(OUT / split / "images" / (stem + ".jpg")), bg, [cv2.IMWRITE_JPEG_QUALITY, 92])
-            (OUT / split / "labels" / (stem + ".txt")).write_text("\n".join(rows) + "\n")
-            notes.append(f"{split}/{stem}.jpg\tbackground negatives_internet/{split}/images/{bg_path.name}")
-    (OUT / "SOURCE.txt").write_text(
-        "SYNTHETIC pictures made by make_confusion.py: real paper-ball cut-outs pasted onto negatives_internet backgrounds "
+            cv2.imwrite(str(DATA / split / "confusion" / "images" / (stem + ".jpg")), bg, [cv2.IMWRITE_JPEG_QUALITY, 92])
+            (DATA / split / "confusion" / "labels" / (stem + ".txt")).write_text("\n".join(rows) + "\n")
+            notes.append(f"{split}/{stem}.jpg\tbackground {split}/negative/images/{bg_path.name}")
+    (DATA / "SOURCES" / "confusion.txt").write_text(
+        "SYNTHETIC pictures made by make_confusion.py: real paper-ball cut-outs pasted onto negative/ backgrounds "
         "(other balls / round / white things stay unlabelled).\nNot real photos - never use as test data.\n\n" + "\n".join(notes) + "\n",
         encoding="utf-8")
-    print(f"-> {OUT}")
+    print(f"-> {DATA}/<train|valid>/confusion")
 
 
 if __name__ == "__main__":

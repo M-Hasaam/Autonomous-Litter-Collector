@@ -1,5 +1,0 @@
-train: [train/images, lowcam_front/train/images]
-val: [valid/images, lowcam_front/valid/images]
-test: [test/images, lowcam_front/test/images]
-nc: 1
-names: ['paper']

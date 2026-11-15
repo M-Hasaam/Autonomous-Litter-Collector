@@ -3,14 +3,14 @@
 Open Images image-level labels are used to pick pale / round / cluttered things that a paper-ball
 detector tends to confuse with paper (plastic bags, eggs, sheets, walls, floors, ...). Any image that
 also carries a Paper / Book / Tissue / Napkin label is skipped. Images are resized to <= 640 px and
-written with EMPTY label files (YOLO "background" images), plus SOURCES.txt with author + licence.
+written with EMPTY label files (YOLO "background" images), plus SOURCES/negative.txt with author + licence.
 
-Output (review it before using!):  negatives_internet/{train,valid}/{images,labels}/ and SOURCES.txt
+Output (review it before using!):  dataset/{train,valid}/negative/{images,labels}/ and dataset/SOURCES/negative.txt
 
 Run:  python fetch_negatives.py --meta <folder with the 3 Open Images CSVs>
 The CSVs are  oidv7-class-descriptions.csv, oidv7-val-annotations-human-imagelabels.csv  (storage.googleapis.com/openimages/v7/)
 and  validation-images-with-rotation.csv  (storage.googleapis.com/openimages/2018_04/validation/).
-Needs Pillow. Open Images images are CC BY 2.0 (Flickr); keep SOURCES.txt for attribution.
+Needs Pillow. Open Images images are CC BY 2.0 (Flickr); keep SOURCES/negative.txt for attribution.
 """
 import argparse
 import csv
@@ -45,13 +45,13 @@ VALID_FRACTION = 0.15
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
     ap.add_argument("--meta", type=Path, required=True)
-    ap.add_argument("--out", type=Path, default=HERE / "negatives_internet")
+    ap.add_argument("--out", type=Path, default=HERE / "dataset")
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--extra", action="store_true",
-                    help="second round: use EXTRA_QUOTAS, skip images already in --out, append to SOURCES.txt")
+                    help="second round: use EXTRA_QUOTAS, skip images already in --out, append to SOURCES/negative.txt")
     args = ap.parse_args()
     quotas = EXTRA_QUOTAS if args.extra else QUOTAS
-    have = {p.stem for p in args.out.glob("*/images/*.jpg")} if args.extra else set()
+    have = {p.stem for p in args.out.glob("*/negative/images/*.jpg")} if args.extra else set()
     rng = random.Random(args.seed)
 
     ids = {}
@@ -111,15 +111,20 @@ def main():
             continue
         img.thumbnail((MAX_SIDE, MAX_SIDE))
         split = "valid" if idx < n_valid else "train"
-        (args.out / split / "images").mkdir(parents=True, exist_ok=True)
-        (args.out / split / "labels").mkdir(parents=True, exist_ok=True)
+        (args.out / split / "negative" / "images").mkdir(parents=True, exist_ok=True)
+        (args.out / split / "negative" / "labels").mkdir(parents=True, exist_ok=True)
         stem = f"neg_{image_id}"
-        img.save(args.out / split / "images" / f"{stem}.jpg", quality=90)
-        (args.out / split / "labels" / f"{stem}.txt").write_text("", encoding="utf-8")
+        img.save(args.out / split / "negative" / "images" / f"{stem}.jpg", quality=90)
+        (args.out / split / "negative" / "labels" / f"{stem}.txt").write_text("", encoding="utf-8")
         sources.append(f"{split}/{stem}.jpg\t{name}\t{row['License']}\t{row['Author']}\t{row['OriginalLandingURL']}")
         saved += 1
-    (args.out / "SOURCES.txt").write_text(
-        "file\tsearch_class\tlicense\tauthor\tsource_page\n" + "\n".join(sources) + "\n", encoding="utf-8")
+    (args.out / "SOURCES").mkdir(exist_ok=True)
+    sources_file = args.out / "SOURCES" / "negative.txt"
+    if args.extra and sources_file.is_file():      # second round: add to the attribution list, never overwrite it
+        with open(sources_file, "a", encoding="utf-8") as f:
+            f.write("\n".join(sources) + "\n")
+    else:
+        sources_file.write_text("file\tsearch_class\tlicense\tauthor\tsource_page\n" + "\n".join(sources) + "\n", encoding="utf-8")
     print(f"saved {saved} images to {args.out}")
 
 

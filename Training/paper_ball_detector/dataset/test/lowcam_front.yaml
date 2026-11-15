@@ -1,0 +1,5 @@
+# Held-out test set lowcam_front (never used for training). Folders: lowcam_front/{images,labels}
+train: lowcam_front/images
+val: lowcam_front/images
+names:
+  0: paper

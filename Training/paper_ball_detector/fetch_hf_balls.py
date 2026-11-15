@@ -1,7 +1,7 @@
 """Download "no paper ball here" negatives of OTHER balls from the Hugging Face dataset AIOmarRehan/Sports-Balls (CC0).
 
 15 ball types (football, basketball, tennis, golf, table tennis, volleyball, ...), a few images of each, resized to <= 640 px and
-written with EMPTY label files (YOLO "background" images) into negatives_internet/{train,valid}/ plus lines in SOURCES.txt.
+written with EMPTY label files (YOLO "background" images) into dataset/{train,valid}/negative/ plus lines in dataset/SOURCES/negative.txt.
 Uses the public datasets-server rows API (no pyarrow / datasets library needed). Look at the images before training on them.
 
 Run:  python fetch_hf_balls.py [--per-class 7]
@@ -38,7 +38,7 @@ def get(url):
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
     ap.add_argument("--per-class", type=int, default=7)
-    ap.add_argument("--out", type=Path, default=HERE / "negatives_internet")
+    ap.add_argument("--out", type=Path, default=HERE / "dataset")
     ap.add_argument("--seed", type=int, default=0)
     args = ap.parse_args()
     rng = random.Random(args.seed)
@@ -66,7 +66,7 @@ def main():
     sources, saved = [], 0
     for k, (label, idx) in enumerate(chosen):
         stem = f"hfball_{idx:04d}"
-        if any(args.out.glob(f"*/images/{stem}.jpg")):
+        if any(args.out.glob(f"*/negative/images/{stem}.jpg")):
             continue   # already downloaded by an earlier run
         img = None
         for attempt in range(6):
@@ -82,12 +82,13 @@ def main():
         img.thumbnail((MAX_SIDE, MAX_SIDE))
         split = "valid" if k < n_valid else "train"
         for sub in ("images", "labels"):
-            (args.out / split / sub).mkdir(parents=True, exist_ok=True)
-        img.save(args.out / split / "images" / f"{stem}.jpg", quality=90)
-        (args.out / split / "labels" / f"{stem}.txt").write_text("", encoding="utf-8")
+            (args.out / split / "negative" / sub).mkdir(parents=True, exist_ok=True)
+        img.save(args.out / split / "negative" / "images" / f"{stem}.jpg", quality=90)
+        (args.out / split / "negative" / "labels" / f"{stem}.txt").write_text("", encoding="utf-8")
         sources.append(f"{split}/{stem}.jpg\t{label}\tCC0 1.0\tHugging Face {DATASET}\thttps://huggingface.co/datasets/{DATASET}")
         saved += 1
-    with open(args.out / "SOURCES.txt", "a", encoding="utf-8") as f:
+    (args.out / "SOURCES").mkdir(exist_ok=True)
+    with open(args.out / "SOURCES" / "negative.txt", "a", encoding="utf-8") as f:
         f.write("\n".join(sources) + "\n")
     print(f"saved {saved} images to {args.out}")
 

@@ -1,7 +1,7 @@
 """Train YOLO11n on a paper-ball dataset downloaded from Roboflow Universe (YOLOv11 / YOLOv8 export), separately from
 yolo-temp. It does NOT touch the app's model (Mobile_app/app/src/main/assets/litter_detector.tflite).
 
-The data is the cleaned dataset in dataset_fixed/ (see dataset_fixed/data.yaml). It started as a Roboflow Universe "paper" export
+The data is the cleaned dataset in dataset/ (see dataset/data.yaml). It started as a Roboflow Universe "paper" export
 (CC BY 4.0); the raw export and the script that cleaned it were removed once the cleaned copy was committed.
 
 Run (in an environment with ultralytics + torch + onnx):
@@ -62,7 +62,7 @@ def prepare_yaml(data_yaml, out_path):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--data", default=str(HERE / "dataset_fixed" / "data.yaml"))
+    ap.add_argument("--data", default=str(HERE / "dataset" / "data.yaml"))
     ap.add_argument("--epochs", type=int, default=25)
     ap.add_argument("--imgsz", type=int, default=640)
     ap.add_argument("--batch", type=int, default=16)
@@ -71,8 +71,8 @@ def main():
 
     data_yaml = Path(args.data)
     if not data_yaml.is_file():
-        sys.exit(f"ERROR: {data_yaml} not found. Unzip the Roboflow export into {HERE / 'dataset'} (see the top of "
-                 f"this file).")
+        sys.exit(f"ERROR: {data_yaml} not found. Expected the cleaned dataset in {HERE / 'dataset'} "
+                 f"(see the top of this file).")
     resolved = HERE / "runs" / "dataset.resolved.yaml"
     prepare_yaml(data_yaml, resolved)
 

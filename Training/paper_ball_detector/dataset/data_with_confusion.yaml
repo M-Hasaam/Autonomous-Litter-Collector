@@ -1,0 +1,7 @@
+# Same as data.yaml plus the SYNTHETIC confusion composites in TRAINING only (never in valid/test).
+# Train once with data.yaml and once with this file, compare on test/test1 and test/test2 (real pictures), keep the better one.
+train: [train/normal/images, train/negative/images, train/lowcam_front/images, train/agilex_desk/images, train/confusion/images]
+val: [valid/normal/images, valid/negative/images, valid/lowcam_front/images, valid/agilex_desk/images]
+test: [test/test1/images, test/lowcam_front/images, test/agilex_desk/images]
+nc: 1
+names: ['paper']
