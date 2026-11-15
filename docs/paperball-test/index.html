@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Paper-ball detector test</title>
+<style>
+  :root { --bg:#0e1116; --panel:#171b22; --text:#e8ecf1; --muted:#98a2b3; --accent:#3ddc84; --warn:#ffb020; --line:#2a313c; }
+  @media (prefers-color-scheme: light) {
+    :root { --bg:#f4f6f9; --panel:#ffffff; --text:#12161c; --muted:#5b6574; --accent:#0a8f4a; --warn:#b36b00; --line:#d9dee6; }
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:16px/1.45 -apple-system, system-ui, "Segoe UI", sans-serif; }
+  main { max-width:720px; margin:0 auto; padding:16px; padding-bottom:calc(16px + env(safe-area-inset-bottom)); }
+  h1 { font-size:1.25rem; margin:4px 0 2px; }
+  .sub { color:var(--muted); font-size:.9rem; margin:0 0 12px; }
+  .view { position:relative; background:#000; border-radius:12px; overflow:hidden; border:1px solid var(--line); }
+  canvas { display:block; width:100%; height:auto; }
+  .empty { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; text-align:center; padding:24px; color:#9aa4b2; font-size:.95rem; }
+  .row { display:flex; flex-wrap:wrap; gap:8px; margin:12px 0; }
+  button, .btn { appearance:none; border:1px solid var(--line); background:var(--panel); color:var(--text); border-radius:10px;
+                 padding:12px 14px; font:inherit; font-weight:600; min-height:44px; cursor:pointer; }
+  button.primary { background:var(--accent); color:#04130a; border-color:transparent; }
+  button:disabled { opacity:.5; cursor:default; }
+  label.btn { display:inline-flex; align-items:center; }
+  input[type=file] { display:none; }
+  .panel { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:12px 14px; margin-top:12px; }
+  .slider { display:flex; align-items:center; gap:12px; }
+  .slider input { flex:1; min-height:32px; }
+  .stats { display:grid; grid-template-columns:repeat(3, 1fr); gap:8px; text-align:center; }
+  .stats b { display:block; font-size:1.3rem; }
+  .stats span { color:var(--muted); font-size:.8rem; }
+  #status { color:var(--muted); font-size:.9rem; margin:4px 0 0; min-height:1.3em; }
+  #status.err { color:var(--warn); }
+  ul { margin:6px 0 0 18px; padding:0; color:var(--muted); font-size:.88rem; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Paper-ball detector test</h1>
+  <p class="sub">Runs the YOLO11n model entirely in this browser. No picture leaves your phone.</p>
+
+  <div class="view">
+    <canvas id="view" width="640" height="480"></canvas>
+    <div class="empty" id="empty">Load the model, then start the camera or pick a photo.</div>
+  </div>
+  <p id="status">Loading model...</p>
+
+  <div class="row">
+    <button class="primary" id="startBtn" disabled>Start camera</button>
+    <button id="flipBtn" disabled>Flip camera</button>
+    <label class="btn">Pick photo<input type="file" id="photo" accept="image/*"></label>
+  </div>
+
+  <div class="panel">
+    <div class="slider">
+      <span>Confidence</span>
+      <input type="range" id="conf" min="5" max="95" value="25">
+      <b id="confVal">0.25</b>
+    </div>
+  </div>
+
+  <div class="panel stats">
+    <div><b id="count">-</b><span>paper balls</span></div>
+    <div><b id="ms">-</b><span>ms / frame</span></div>
+    <div><b id="fps">-</b><span>frames / s</span></div>
+  </div>
+
+  <div class="panel">
+    <b>How to test</b>
+    <ul>
+      <li>Hold the phone low and level, like the robot's camera, and look at a paper ball on the floor.</li>
+      <li>Then point it at things that are not paper balls: other balls, socks, bags, white walls and floors. Any box there is a false detection. Lower the slider to see how weak those are.</li>
+      <li>"Pick photo" tests a single picture from your photo library or camera.</li>
+    </ul>
+  </div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.17.3/dist/ort.min.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const params = new URLSearchParams(location.search);
+const MODEL_URL = params.get('model') || 'roboflow-paperball.onnx';
+const SIZE = 640, NMS_IOU = 0.45, MIN_CONF = 0.05;
+
+const canvas = $('view'), ctx = canvas.getContext('2d');
+const work = document.createElement('canvas');           // 640x640 letterboxed copy that is fed to the model
+work.width = work.height = SIZE;
+const wctx = work.getContext('2d', { willReadFrequently: true });
+const video = document.createElement('video');
+video.setAttribute('playsinline', ''); video.muted = true;
+
+let session = null, running = false, stream = null, facing = 'environment', lastDetections = [], lastSource = null;
+
+function setStatus(text, isError) { const s = $('status'); s.textContent = text; s.className = isError ? 'err' : ''; }
+
+async function loadModel() {
+  try {
+    ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.17.3/dist/';
+    ort.env.wasm.numThreads = 1;                          // threads need special server headers that GitHub Pages does not send
+    setStatus('Downloading model (about 10 MB)...');
+    const res = await fetch(MODEL_URL);
+    if (!res.ok) throw new Error('model not found: ' + MODEL_URL);
+    const buf = await res.arrayBuffer();
+    setStatus('Starting the model...');
+    session = await ort.InferenceSession.create(buf, { executionProviders: ['wasm'], graphOptimizationLevel: 'all' });
+    setStatus('Model ready. Start the camera or pick a photo.');
+    $('startBtn').disabled = false; $('flipBtn').disabled = false;
+  } catch (e) {
+    setStatus('Could not load the model: ' + e.message, true);
+  }
+}
+
+// ---- pre-processing: letterbox to 640x640 (grey 114 padding), RGB, 0..1, CHW -------------------------------------------
+function preprocess(source, sw, sh) {
+  const s = SIZE / Math.max(sw, sh);
+  const nw = Math.round(sw * s), nh = Math.round(sh * s);
+  const px = Math.floor((SIZE - nw) / 2), py = Math.floor((SIZE - nh) / 2);
+  wctx.fillStyle = 'rgb(114,114,114)'; wctx.fillRect(0, 0, SIZE, SIZE);
+  wctx.drawImage(source, px, py, nw, nh);
+  const d = wctx.getImageData(0, 0, SIZE, SIZE).data, n = SIZE * SIZE, t = new Float32Array(3 * n);
+  for (let i = 0; i < n; i++) { t[i] = d[i*4] / 255; t[n + i] = d[i*4 + 1] / 255; t[2*n + i] = d[i*4 + 2] / 255; }
+  return { tensor: new ort.Tensor('float32', t, [1, 3, SIZE, SIZE]), s, px, py };
+}
+
+// ---- post-processing: output [1, 4+classes, 8400] = cx, cy, w, h (in 640 px) + class scores, then NMS ----------------------
+function decode(output, pre, sw, sh) {
+  const [, a, b] = output.dims, data = output.data;
+  const transposed = a > b;                                // some exports give [1, 8400, 5]
+  const C = transposed ? b : a, N = transposed ? a : b;
+  const at = (k, i) => transposed ? data[i * C + k] : data[k * N + i];
+  const boxes = [];
+  for (let i = 0; i < N; i++) {
+    let score = 0;
+    for (let k = 4; k < C; k++) score = Math.max(score, at(k, i));
+    if (score < MIN_CONF) continue;
+    const cx = at(0, i), cy = at(1, i), w = at(2, i), h = at(3, i);
+    const x1 = Math.max((cx - w/2 - pre.px) / pre.s, 0), y1 = Math.max((cy - h/2 - pre.py) / pre.s, 0);
+    const x2 = Math.min((cx + w/2 - pre.px) / pre.s, sw), y2 = Math.min((cy + h/2 - pre.py) / pre.s, sh);
+    if (x2 > x1 && y2 > y1) boxes.push({ x1, y1, x2, y2, score });
+  }
+  boxes.sort((p, q) => q.score - p.score);
+  const keep = [];
+  for (const bx of boxes) if (keep.every(k => iou(bx, k) < NMS_IOU)) keep.push(bx);
+  return keep;
+}
+function iou(p, q) {
+  const iw = Math.min(p.x2, q.x2) - Math.max(p.x1, q.x1), ih = Math.min(p.y2, q.y2) - Math.max(p.y1, q.y1);
+  if (iw <= 0 || ih <= 0) return 0;
+  const inter = iw * ih;
+  return inter / ((p.x2-p.x1)*(p.y2-p.y1) + (q.x2-q.x1)*(q.y2-q.y1) - inter);
+}
+
+async function detect(source, sw, sh) {
+  const pre = preprocess(source, sw, sh);
+  const out = await session.run({ [session.inputNames[0]]: pre.tensor });
+  return decode(out[session.outputNames[0]], pre, sw, sh);
+}
+
+// ---- drawing ----------------------------------------------------------------------------------------------------------------
+function draw(source, sw, sh, detections) {
+  if (canvas.width !== sw || canvas.height !== sh) { canvas.width = sw; canvas.height = sh; }
+  ctx.drawImage(source, 0, 0, sw, sh);
+  const threshold = Number($('conf').value) / 100;
+  const shown = detections.filter(d => d.score >= threshold);
+  const lw = Math.max(2, Math.round(sw / 220)), fs = Math.max(14, Math.round(sw / 28));
+  ctx.lineWidth = lw; ctx.font = `600 ${fs}px sans-serif`; ctx.textBaseline = 'bottom';
+  for (const d of shown) {
+    ctx.strokeStyle = '#3ddc84'; ctx.strokeRect(d.x1, d.y1, d.x2 - d.x1, d.y2 - d.y1);
+    const label = `paper ${Math.round(d.score * 100)}%`, tw = ctx.measureText(label).width + 8;
+    const ty = d.y1 - lw < fs + 4 ? d.y1 + fs + 4 : d.y1;
+    ctx.fillStyle = '#3ddc84'; ctx.fillRect(d.x1 - lw/2, ty - fs - 4, tw, fs + 4);
+    ctx.fillStyle = '#04130a'; ctx.fillText(label, d.x1 + 3, ty - 1);
+  }
+  $('count').textContent = shown.length;
+  $('empty').style.display = 'none';
+}
+
+// ---- camera loop ---------------------------------------------------------------------------------------------------------
+async function startCamera() {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    setStatus('This browser cannot open the camera here. Use https:// and Safari or Chrome.', true); return;
+  }
+  stopCamera();
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: facing }, width: { ideal: 640 }, height: { ideal: 480 } }, audio: false });
+  } catch (e) { setStatus('Camera not allowed: ' + e.message, true); return; }
+  video.srcObject = stream; await video.play();
+  running = true; $('startBtn').textContent = 'Stop camera'; setStatus('Camera running.');
+  loop();
+}
+function stopCamera() {
+  running = false;
+  if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+  $('startBtn').textContent = 'Start camera';
+}
+async function loop() {
+  let fps = 0;
+  while (running) {
+    if (video.readyState >= 2 && video.videoWidth) {
+      const t0 = performance.now(), sw = video.videoWidth, sh = video.videoHeight;
+      try {
+        lastDetections = await detect(video, sw, sh);
+        draw(video, sw, sh, lastDetections);
+      } catch (e) { setStatus('Inference error: ' + e.message, true); stopCamera(); return; }
+      const dt = performance.now() - t0;
+      fps = fps ? fps * 0.8 + (1000 / dt) * 0.2 : 1000 / dt;
+      $('ms').textContent = Math.round(dt); $('fps').textContent = fps.toFixed(1);
+    }
+    await new Promise(r => requestAnimationFrame(r));
+  }
+}
+
+// ---- one photo ---------------------------------------------------------------------------------------------------------
+async function runOnImage(src) {
+  if (!session) return;
+  stopCamera(); setStatus('Running on the photo...');
+  const img = new Image(); img.src = src;
+  try { await img.decode(); } catch (e) { setStatus('Could not read that picture.', true); return; }
+  const scale = Math.min(1, 1280 / Math.max(img.naturalWidth, img.naturalHeight));   // big phone photos: shrink for speed
+  const sw = Math.round(img.naturalWidth * scale), sh = Math.round(img.naturalHeight * scale);
+  const t0 = performance.now();
+  lastDetections = await detect(img, sw, sh); lastSource = { img, sw, sh };
+  draw(img, sw, sh, lastDetections);
+  $('ms').textContent = Math.round(performance.now() - t0); $('fps').textContent = '-';
+  setStatus('Photo done. Move the slider to see weaker detections.');
+  window.__result = lastDetections.filter(d => d.score >= 0.25).map(d => [d.x1, d.y1, d.x2, d.y2, d.score]);   // for automatic checks
+  document.title = 'done ' + JSON.stringify(window.__result);
+}
+$('photo').addEventListener('change', async ev => {
+  const file = ev.target.files[0]; if (!file) return;
+  await runOnImage(URL.createObjectURL(file)); ev.target.value = '';
+});
+
+$('startBtn').addEventListener('click', () => running ? stopCamera() : startCamera());
+$('flipBtn').addEventListener('click', () => { facing = facing === 'environment' ? 'user' : 'environment'; if (running) startCamera(); });
+$('conf').addEventListener('input', () => {
+  $('confVal').textContent = (Number($('conf').value) / 100).toFixed(2);
+  if (!running && lastSource) draw(lastSource.img, lastSource.sw, lastSource.sh, lastDetections);   // still photo: redraw with the new threshold
+});
+loadModel().then(() => { if (params.get('image')) runOnImage(params.get('image')); });   // ?image=<url> runs on one picture at load
+</script>
+</body>
+</html>
