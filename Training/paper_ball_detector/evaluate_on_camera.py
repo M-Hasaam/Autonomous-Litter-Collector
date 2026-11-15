@@ -40,7 +40,7 @@ def main():
     for name in names:
         yaml_path, split, images = SETS[name]
         if not images.is_dir():
-            sys.exit(f"{name}: images not found: {images} (run fix_dataset.py)")
+            sys.exit(f"{name}: images not found: {images} (expected inside dataset_fixed/)")
 
     from ultralytics import YOLO
 

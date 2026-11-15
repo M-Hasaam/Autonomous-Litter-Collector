@@ -1,10 +1,8 @@
 """Train YOLO11n on a paper-ball dataset downloaded from Roboflow Universe (YOLOv11 / YOLOv8 export), separately from
 yolo-temp. It does NOT touch the app's model (Mobile_app/app/src/main/assets/litter_detector.tflite).
 
-How to get the data (needs a free Roboflow login, so it cannot be done from a script here):
-  1. Open the dataset page on universe.roboflow.com, check the licence, click "Download Dataset".
-  2. Format "YOLOv11" (or YOLOv8), choose "download zip to computer".
-  3. Unzip it so that  Training/paper_ball_detector/dataset/data.yaml  exists, then run fix_dataset.py (it repairs the export and writes dataset_fixed/).
+The data is the cleaned dataset in dataset_fixed/ (see dataset_fixed/data.yaml). It started as a Roboflow Universe "paper" export
+(CC BY 4.0); the raw export and the script that cleaned it were removed once the cleaned copy was committed.
 
 Run (in an environment with ultralytics + torch + onnx):
   python train_roboflow.py [--epochs 25] [--batch 16] [--device cpu]
