@@ -33,6 +33,8 @@
   #status { color:var(--muted); font-size:.9rem; margin:4px 0 0; min-height:1.3em; }
   #status.err { color:var(--warn); }
   a { color:var(--accent); }
+  select { flex:1; min-height:44px; font:inherit; font-weight:600; color:var(--text); background:var(--bg); border:1px solid var(--line); border-radius:10px; padding:0 10px; }
+  .note { color:var(--muted); font-size:.85rem; margin:8px 0 0; }
   .links { display:flex; flex-wrap:wrap; gap:6px 16px; margin:0 0 14px; font-size:.92rem; font-weight:600; }
   footer { color:var(--muted); font-size:.8rem; margin-top:16px; }
   ul { margin:6px 0 0 18px; padding:0; color:var(--muted); font-size:.88rem; }
@@ -44,7 +46,7 @@
   <p class="sub">Runs the YOLO11n model entirely in this browser. No picture leaves your phone.</p>
   <p class="links">
     <a href="https://github.com/M-Hasaam/Autonomous-Litter-Collector">GitHub repository</a>
-    <a href="https://github.com/M-Hasaam/Autonomous-Litter-Collector/releases/tag/v2.0">Model v2.0 and results</a>
+    <a href="https://github.com/M-Hasaam/Autonomous-Litter-Collector/releases">Models and results</a>
     <a href="https://github.com/M-Hasaam/Autonomous-Litter-Collector/tree/master/Training/paper_ball_detector">Training code and dataset</a>
   </p>
 
@@ -58,6 +60,14 @@
     <button class="primary" id="startBtn" disabled>Start camera</button>
     <button id="flipBtn" disabled>Flip camera</button>
     <label class="btn">Pick photo<input type="file" id="photo" accept="image/*"></label>
+  </div>
+
+  <div class="panel">
+    <div class="slider">
+      <span>Model</span>
+      <select id="model"></select>
+    </div>
+    <p id="modelNote" class="note"></p>
   </div>
 
   <div class="panel">
@@ -84,8 +94,8 @@
   </div>
 
   <footer>
-    Model: YOLO11n fine-tuned for paper balls (v2.0), 640x640, run with onnxruntime-web. v2 was trained with many pictures without paper
-    balls to avoid false boxes on other balls and white surfaces; it can still miss very blurry frames. This page helps to check that. YOLO11 is AGPL-3.0; the training data is CC BY 4.0 and other open licences, see the
+    Models: YOLO11n fine-tuned for paper balls, 640x640, run with onnxruntime-web. Both v2 models were trained with many pictures without paper
+    balls to avoid false boxes on other balls and white surfaces. Use the switch to compare them on your own floor. YOLO11 is AGPL-3.0; the training data is CC BY 4.0 and other open licences, see the
     <a href="https://github.com/M-Hasaam/Autonomous-Litter-Collector#licences">repository</a>.
   </footer>
 </main>
@@ -94,7 +104,16 @@
 <script>
 const $ = id => document.getElementById(id);
 const params = new URLSearchParams(location.search);
-const MODEL_URL = params.get('model') || 'roboflow-paperball.onnx';
+const MODELS = [
+  { id: 'v2.1', file: 'models/paperball-v2.1.onnx',
+    note: 'Trained with extra synthetic "paper ball next to other balls" pictures. Copes better with new floors such as patterned carpet.' },
+  { id: 'v2.0', file: 'models/paperball-v2.0.onnx',
+    note: 'First v2 release. Very few false boxes on plain floors, but it can miss balls on patterned or coloured floors.' },
+];
+const custom = params.get('model');                       // ?model=v2.0, or ?model=<url of another .onnx>
+if (custom && !MODELS.some(m => m.id === custom) && custom.includes('.onnx')) MODELS.push({ id: 'custom', file: custom, note: 'Model from the address (?model=).' });
+let currentModel = null;
+const sessions = new Map();                               // model id -> loaded session (switching back is instant)
 const SIZE = 640, NMS_IOU = 0.45, MIN_CONF = 0.05;
 
 const canvas = $('view'), ctx = canvas.getContext('2d');
@@ -108,20 +127,33 @@ let session = null, running = false, stream = null, facing = 'environment', last
 
 function setStatus(text, isError) { const s = $('status'); s.textContent = text; s.className = isError ? 'err' : ''; }
 
-async function loadModel() {
+async function loadModel(id) {
+  const entry = MODELS.find(m => m.id === id) || MODELS[0];
+  $('modelNote').textContent = entry.note;
+  try { localStorage.setItem('paperballModel', entry.id); } catch (e) { /* private window: fine */ }
+  if (sessions.has(entry.id)) { session = sessions.get(entry.id); currentModel = entry.id; setStatus('Model ' + entry.id + ' ready.'); redrawLast(); return; }
+  session = null;                                         // the camera loop waits while a model loads
   try {
     ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.17.3/dist/';
     ort.env.wasm.numThreads = 1;                          // threads need special server headers that GitHub Pages does not send
-    setStatus('Downloading model (about 10 MB)...');
-    const res = await fetch(MODEL_URL);
-    if (!res.ok) throw new Error('model not found: ' + MODEL_URL);
+    setStatus('Downloading model ' + entry.id + ' (about 10 MB)...');
+    const res = await fetch(entry.file);
+    if (!res.ok) throw new Error('model not found: ' + entry.file);
     const buf = await res.arrayBuffer();
-    setStatus('Starting the model...');
-    session = await ort.InferenceSession.create(buf, { executionProviders: ['wasm'], graphOptimizationLevel: 'all' });
-    setStatus('Model ready. Start the camera or pick a photo.');
+    setStatus('Starting model ' + entry.id + '...');
+    const s = await ort.InferenceSession.create(buf, { executionProviders: ['wasm'], graphOptimizationLevel: 'all' });
+    sessions.set(entry.id, s); session = s; currentModel = entry.id;
+    setStatus('Model ' + entry.id + ' ready. Start the camera or pick a photo.');
     $('startBtn').disabled = false; $('flipBtn').disabled = false;
+    redrawLast();
   } catch (e) {
     setStatus('Could not load the model: ' + e.message, true);
+  }
+}
+async function redrawLast() {                             // after a switch, run the new model on the last photo again
+  if (!running && lastSource && session) {
+    lastDetections = await detect(lastSource.img, lastSource.sw, lastSource.sh);
+    draw(lastSource.img, lastSource.sw, lastSource.sh, lastDetections);
   }
 }
 
@@ -212,7 +244,7 @@ function stopCamera() {
 async function loop() {
   let fps = 0;
   while (running) {
-    if (video.readyState >= 2 && video.videoWidth) {
+    if (session && video.readyState >= 2 && video.videoWidth) {
       const t0 = performance.now(), sw = video.videoWidth, sh = video.videoHeight;
       try {
         lastDetections = await detect(video, sw, sh);
@@ -253,7 +285,12 @@ $('conf').addEventListener('input', () => {
   $('confVal').textContent = (Number($('conf').value) / 100).toFixed(2);
   if (!running && lastSource) draw(lastSource.img, lastSource.sw, lastSource.sh, lastDetections);   // still photo: redraw with the new threshold
 });
-loadModel().then(() => { if (params.get('image')) runOnImage(params.get('image')); });   // ?image=<url> runs on one picture at load
+MODELS.forEach(m => { const o = document.createElement('option'); o.value = m.id; o.textContent = m.id + (m.id === MODELS[0].id ? ' (recommended)' : ''); $('model').appendChild(o); });
+let saved = null; try { saved = localStorage.getItem('paperballModel'); } catch (e) { /* private window: fine */ }
+const startId = MODELS.some(m => m.id === custom) ? custom : (custom && custom.includes('.onnx') ? 'custom' : (MODELS.some(m => m.id === saved) ? saved : MODELS[0].id));
+$('model').value = startId;
+$('model').addEventListener('change', () => loadModel($('model').value));
+loadModel(startId).then(() => { if (params.get('image')) runOnImage(params.get('image')); });   // ?image=<url> runs on one picture at load
 </script>
 </body>
 </html>
