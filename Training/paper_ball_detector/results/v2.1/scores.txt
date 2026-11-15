@@ -1,0 +1,6 @@
+set           pictures  precision   recall   mAP50  mAP50-95
+valid              124      0.988    0.996   0.995     0.750
+test1               25      0.966    1.000   0.995     0.814
+test2               23      0.956    0.956   0.983     0.731
+lowcam_front        29      1.000    0.964   0.965     0.756
+agilex_desk         11      0.995    1.000   0.995     0.752

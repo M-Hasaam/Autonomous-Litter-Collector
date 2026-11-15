@@ -9,41 +9,47 @@ servo arm, PC tools and an Android app that runs the detector on the phone. The 
 
 Open it on a phone (Safari or Chrome), tap *Start camera* and point it at a paper ball, then at things that are not paper balls
 (other balls, socks, bags, white walls). The model runs **inside your browser, on your device**; nothing is uploaded. "Pick photo"
-tests a single picture and the slider shows weaker detections. It runs the v2.0 model. Source: [docs/paperball-test/](docs/paperball-test/).
+tests a single picture and the slider shows weaker detections. It lets you switch between v2.1 and v2.0. Source: [docs/paperball-test/](docs/paperball-test/).
 
 ## Paper-ball detector: results
 
-**Current model: v2.0** ([release](https://github.com/M-Hasaam/Autonomous-Litter-Collector/releases/tag/v2.0), `roboflow-paperball.pt` / `.onnx`).
-YOLO11n fine-tuned for 80 epochs (best epoch 70) on 697 training pictures: the cleaned Roboflow set, 271 pictures **without** paper balls,
-low-angle floor frames and real desk frames (see the dataset below). Scores on pictures the model never trained on:
+**Current model: v2.1** ([release](https://github.com/M-Hasaam/Autonomous-Litter-Collector/releases/tag/v2.1), `roboflow-paperball.pt` / `.onnx`).
+YOLO11n fine-tuned on 817 training pictures: the cleaned Roboflow set, 271 pictures **without** paper balls, low-angle floor frames, real desk frames
+and 120 synthetic "paper ball pasted onto other-ball backgrounds" pictures (see the dataset below). Early stopping ended training at epoch 64
+(best epoch 34). Scores on pictures the model never trained on:
 
 | Set | Pictures | Precision | Recall | mAP50 | mAP50-95 |
 |---|---|---|---|---|---|
-| valid | 124 | 0.987 | 1.000 | 0.995 | 0.780 |
-| test1 (same kind as the training data) | 25 | 1.000 | 0.997 | 0.995 | 0.799 |
-| test2 (real ESP32-CAM, hand-labelled) | 23 | 1.000 | 0.913 | 0.992 | 0.855 |
-| lowcam_front (low-angle floor camera) | 29 | 1.000 | 0.998 | 0.995 | 0.829 |
-| agilex_desk (desk frames, automatic labels) | 11 | 0.993 | 1.000 | 0.995 | 0.734 |
+| valid | 124 | 0.988 | 0.996 | 0.995 | 0.750 |
+| test1 (same kind as the training data) | 25 | 0.966 | 1.000 | 0.995 | 0.814 |
+| test2 (real ESP32-CAM, hand-labelled) | 23 | 0.956 | 0.956 | 0.983 | 0.731 |
+| lowcam_front (low-angle floor camera) | 29 | 1.000 | 0.964 | 0.965 | 0.756 |
+| agilex_desk (desk frames, automatic labels) | 11 | 0.995 | 1.000 | 0.995 | 0.752 |
 
-**False detections.** v1 drew a box on other white or bright surfaces. On 48 held-out pictures with no paper ball (balls, round food, bags,
-floors, walls) at confidence 0.25: **v1 gave false boxes on 38 of 48, v2 on 1 of 48** (0 at confidence 0.5).
+**False detections.** On 48 held-out pictures with no paper ball (balls, round food, bags, floors, walls) at confidence 0.25: **v1 gave false boxes on 38 of 48,
+v2.1 on 2 of 48** (0 at confidence 0.5).
+
+**Real-world test.** The formal test sets look like the training data and are almost saturated, so they hide how a model behaves on a floor it has not seen.
+In a phone test with three paper balls on a floor the models had not seen: v2.1 found all three (0.85, 0.81, 0.78), v1 found all three but also drew boxes on the
+floor pattern, and v2.0 found none. In the browser test page on the phone, v2.1 also found all three balls on two different floors, with no false boxes.
 
 Predictions (green = label, red = model):
 
-![test2 predictions](Training/paper_ball_detector/results/v2/test2.png)
-![test1 predictions](Training/paper_ball_detector/results/v2/test1.png)
-![lowcam_front predictions](Training/paper_ball_detector/results/v2/lowcam_front.png)
+![test2 predictions](Training/paper_ball_detector/results/v2.1/test2.png)
+![test1 predictions](Training/paper_ball_detector/results/v2.1/test1.png)
+![lowcam_front predictions](Training/paper_ball_detector/results/v2.1/lowcam_front.png)
 
-**Limitations.** The test sets are small and almost saturated (about 0.995), so they cannot separate close models; the false-detection check above
-uses internet pictures, not your own floor; very blurry frames can still be missed (test2 recall 0.913); agilex_desk labels are automatic.
-Collecting real-camera pictures, including ones without a paper ball, is the next step. Scores, sheets and the per-epoch log are in
-`Training/paper_ball_detector/results/v2/`.
+**Limitations.** The test sets are small, so the scores cannot separate close models; the real-world result comes from a few phone pictures, not a test set;
+v2.1's box-tightness scores (mAP50-95) on test2 and lowcam_front are lower than v2.0's; agilex_desk labels are automatic.
+Collecting real-camera pictures on several floors, including ones without a paper ball, is the next step. Scores, sheets and the per-epoch log are in
+`Training/paper_ball_detector/results/v2.1/`.
 
-**Also tried:** adding 120 synthetic "paper ball next to other balls" pictures to training (`data_with_confusion.yaml`). It did not help on the real-camera
-tests (test2 mAP50-95 0.731 vs 0.855, 2 vs 1 pictures with a false box), so v2 does not use them.
-
-**v1.0** ([release](https://github.com/M-Hasaam/Autonomous-Litter-Collector/releases/tag/v1.0)): trained on the Roboflow set only (248 train / 30 valid),
-mAP50 0.995 valid / 0.939 test1 / 0.915 test2 on the original, uncorrected test sets (`results/v1/`). Its weakness was the false detections above.
+**Earlier versions**
+* **v2.0** ([release](https://github.com/M-Hasaam/Autonomous-Litter-Collector/releases/tag/v2.0)): same data without the 120 synthetic pictures (697 training pictures, 80 epochs).
+  Tighter boxes on the formal tests (test2 mAP50-95 0.855) and 1 false picture out of 48, but it missed every ball in the real-world test, so it is **superseded by v2.1**
+  (`results/v2.0/`). Both are selectable in the browser test page.
+* **v1.0** ([release](https://github.com/M-Hasaam/Autonomous-Litter-Collector/releases/tag/v1.0)): the Roboflow set only (248 train / 30 valid),
+  mAP50 0.995 valid / 0.939 test1 / 0.915 test2 on the original, uncorrected test sets (`results/v1/`). It boxed other white or bright surfaces.
 
 ## Dataset (`Training/paper_ball_detector/dataset/`)
 
@@ -77,7 +83,7 @@ All in `Training/paper_ball_detector/`:
 ## Repository layout
 
 ```
-Mobile_App/            Android app (Kotlin, Compose, CameraX, LiteRT); open this folder in Android Studio
+Mobile_app/            Android app (Kotlin, Compose, CameraX, LiteRT); open this folder in Android Studio
 Embedded/
   dashboard.py         PC dashboard: camera (ESP32 Wi-Fi bridge) + car (ESP32-S3 over Bluetooth LE)
   esp32/WifiBridge/    ESP32 camera bridge firmware + PC viewers (camera_yolo, camera_distance, camera_serial)
@@ -93,7 +99,7 @@ docs/
 ## Android app status
 
 The app runs a YOLO model fully on the phone (CameraX + LiteRT, no cloud). The model currently installed in
-`Mobile_App/app/src/main/assets/` is the **generic pretrained YOLO11n (COCO classes), not the paper-ball model**. Install the paper-ball
+`Mobile_app/app/src/main/assets/` is the **generic pretrained YOLO11n (COCO classes), not the paper-ball model**. Install the paper-ball
 model with `export_model.py --install` (see above). The app has been built, but not yet tested on a device.
 
 ## Licences

@@ -106,9 +106,9 @@ const $ = id => document.getElementById(id);
 const params = new URLSearchParams(location.search);
 const MODELS = [
   { id: 'v2.1', file: 'models/paperball-v2.1.onnx',
-    note: 'Trained with extra synthetic "paper ball next to other balls" pictures. Copes better with new floors such as patterned carpet.' },
+    note: 'Trained with extra synthetic "paper ball next to other balls" pictures. Copes better with floors it has not seen.' },
   { id: 'v2.0', file: 'models/paperball-v2.0.onnx',
-    note: 'First v2 release. Very few false boxes on plain floors, but it can miss balls on patterned or coloured floors.' },
+    note: 'First v2 release. Very few false boxes on plain floors, but it can miss balls on floors it has not seen.' },
 ];
 const custom = params.get('model');                       // ?model=v2.0, or ?model=<url of another .onnx>
 if (custom && !MODELS.some(m => m.id === custom) && custom.includes('.onnx')) MODELS.push({ id: 'custom', file: custom, note: 'Model from the address (?model=).' });
