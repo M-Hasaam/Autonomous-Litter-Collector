@@ -33,7 +33,7 @@ MIN_ASPECT, MAX_ASPECT = 0.5, 2.0               # box width/height (in pixels) a
 MAX_SIDE = 1280
 MIN_TEST = 25                                   # a held-out "test 1" split: the cleaned export has none
 MIN_VALID = 30                                  # the export's own validation set is tiny once cleaned: top it up
-KEEP = {"test2", "lowcam_front"}               # hand-labelled / separately imported sets: never deleted
+KEEP = {"test2", "lowcam_front", "confusion_composite"}               # hand-labelled / separately imported sets: never deleted
 TURNS = {"raw": None, "cw": cv2.ROTATE_90_CLOCKWISE, "ccw": cv2.ROTATE_90_COUNTERCLOCKWISE}
 
 

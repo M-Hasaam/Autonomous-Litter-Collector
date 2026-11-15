@@ -31,6 +31,12 @@ QUOTAS = {
     "Floor": 16, "Tile": 8, "Carpet": 6, "Rug": 5, "Laptop": 6, "Computer keyboard": 6,
     "Cable": 6, "Rock": 4, "Pebble": 4,
 }
+# second round (--extra): bigger balls and other round / crumpled / pale things a paper-ball detector may confuse with paper
+EXTRA_QUOTAS = {
+    "Ball (Object)": 14, "Football": 10, "Rugby ball": 6, "Volleyball (Ball)": 6, "Balloon": 8, "Snowman": 3,
+    "Garlic": 4, "Onion": 4, "Cabbage": 4, "Cauliflower": 4, "Coconut": 3, "Pearl": 2, "Dumpling": 4,
+    "Ice cream": 4, "Bowl": 6, "Mug": 5, "Lampshade": 5, "Light fixture": 5, "Candle": 4, "Aluminum can": 4,
+}
 EXCLUDE = {"Paper", "Book", "Paper towel", "Tissue paper", "Napkin"}
 MAX_SIDE = 640
 VALID_FRACTION = 0.15
@@ -41,14 +47,18 @@ def main():
     ap.add_argument("--meta", type=Path, required=True)
     ap.add_argument("--out", type=Path, default=HERE / "negatives_internet")
     ap.add_argument("--seed", type=int, default=0)
+    ap.add_argument("--extra", action="store_true",
+                    help="second round: use EXTRA_QUOTAS, skip images already in --out, append to SOURCES.txt")
     args = ap.parse_args()
+    quotas = EXTRA_QUOTAS if args.extra else QUOTAS
+    have = {p.stem for p in args.out.glob("*/images/*.jpg")} if args.extra else set()
     rng = random.Random(args.seed)
 
     ids = {}
     with open(args.meta / "oidv7-class-descriptions.csv", encoding="utf-8") as f:
         for row in csv.DictReader(f):
             ids[row["DisplayName"]] = row["LabelName"]
-    code_to_name = {ids[n]: n for n in list(QUOTAS) + list(EXCLUDE) if n in ids}
+    code_to_name = {ids[n]: n for n in list(quotas) + list(EXCLUDE) if n in ids}
 
     by_class, bad = defaultdict(set), set()
     with open(args.meta / "oidv7-val-annotations-human-imagelabels.csv", encoding="utf-8") as f:
@@ -67,8 +77,8 @@ def main():
             info[row["ImageID"]] = row
 
     chosen, seen = [], set()
-    for name, quota in QUOTAS.items():
-        pool = sorted(i for i in by_class[name] if i not in bad and i not in seen and i in info)
+    for name, quota in quotas.items():
+        pool = sorted(i for i in by_class[name] if i not in bad and i not in seen and i in info and f"neg_{i}" not in have)
         rng.shuffle(pool)
         taken = 0
         for image_id in pool:

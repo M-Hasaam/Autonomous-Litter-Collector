@@ -1,132 +1,189 @@
 file	search_class	license	author	source_page
-valid/neg_147ec0c28828bd0a.jpg	Wall	https://creativecommons.org/licenses/by/2.0/	Dale Goodwin	https://www.flickr.com/photos/cdale/15582293605
-valid/neg_be8d383b3c219305.jpg	Egg	https://creativecommons.org/licenses/by/2.0/	albemar78	https://www.flickr.com/photos/9832554@N02/756927750
-valid/neg_f3b046e9144b39e9.jpg	Computer keyboard	https://creativecommons.org/licenses/by/2.0/	Jin  Li	https://www.flickr.com/photos/lead_org/15950824410
-valid/neg_72f296d97e04673c.jpg	Curtain	https://creativecommons.org/licenses/by/2.0/	Joel Müller	https://www.flickr.com/photos/joelmueller/15772984411
-valid/neg_93aa64d31900ca14.jpg	Pillow	https://creativecommons.org/licenses/by/2.0/	panli54	https://www.flickr.com/photos/53911972@N03/4988895365
-valid/neg_b57d00332383430e.jpg	Floor	https://creativecommons.org/licenses/by/2.0/	Fort George G. Meade Public Affairs Office	https://www.flickr.com/photos/ftmeade/16970606990
-valid/neg_aef28110377aa17e.jpg	Floor	https://creativecommons.org/licenses/by/2.0/	zeevveez	https://www.flickr.com/photos/zeevveez/2852929531/
-valid/neg_c416ac5306e7a02d.jpg	Carpet	https://creativecommons.org/licenses/by/2.0/	Der StubiDe	https://www.flickr.com/photos/101994336@N08/9803845423
-valid/neg_b1cae8a8600781c6.jpg	Tablecloth	https://creativecommons.org/licenses/by/2.0/	Jannes Pockele	https://www.flickr.com/photos/jpockele/542941620
-valid/neg_44615bece0a97866.jpg	Computer keyboard	https://creativecommons.org/licenses/by/2.0/	Koji Horaguchi	https://www.flickr.com/photos/horaguchi/3361793375
-valid/neg_e918ca45aa73171c.jpg	Computer keyboard	https://creativecommons.org/licenses/by/2.0/	Joe Shlabotnik	https://www.flickr.com/photos/joeshlabotnik/443477863
-valid/neg_80ab935c535a481c.jpg	Rock	https://creativecommons.org/licenses/by/2.0/	Costel Slincu	https://www.flickr.com/photos/cost3l/10408415706
-valid/neg_413efa730729c8f7.jpg	Floor	https://creativecommons.org/licenses/by/2.0/	Tyler Humphrey	https://www.flickr.com/photos/thumpphotos/11609379094
-valid/neg_71037fe3d8da73aa.jpg	Laptop	https://creativecommons.org/licenses/by/2.0/	Pittaya Sroilong	https://www.flickr.com/photos/pittaya/3037142368
-valid/neg_9676935a510cd518.jpg	Curtain	https://creativecommons.org/licenses/by/2.0/	Tanya.K.	https://www.flickr.com/photos/26010780@N06/3334573559
-valid/neg_1eb89a8ced859fe7.jpg	Floor	https://creativecommons.org/licenses/by/2.0/	Jin  Li	https://www.flickr.com/photos/lead_org/15950777870
-valid/neg_20d72fbd291c1f84.jpg	Computer keyboard	https://creativecommons.org/licenses/by/2.0/	Parker Knight	https://www.flickr.com/photos/rocketboom/4442467842
-valid/neg_950e1332f618a59d.jpg	Tablecloth	https://creativecommons.org/licenses/by/2.0/	Derek Hatfield	https://www.flickr.com/photos/loimere/1175626415/
-valid/neg_a1926a7fa11844fe.jpg	Curtain	https://creativecommons.org/licenses/by/2.0/	Lauren Nelson	https://www.flickr.com/photos/lulieboo/3459560497
-valid/neg_47ee589c246da1af.jpg	Curtain	https://creativecommons.org/licenses/by/2.0/	liafotodesign	https://www.flickr.com/photos/liafotodesign/2269779017
-train/neg_4fa50434f59c91e7.jpg	Tile	https://creativecommons.org/licenses/by/2.0/	Possible	https://www.flickr.com/photos/nyayahealth/7522225148
-train/neg_096e60fa1d88a2b0.jpg	Floor	https://creativecommons.org/licenses/by/2.0/	lmnop88a	https://www.flickr.com/photos/d_lee/2285285852
-train/neg_e0b72503eeebbf59.jpg	Towel	https://creativecommons.org/licenses/by/2.0/	Shane McGraw	https://www.flickr.com/photos/darkseid/3125761918
-train/neg_a4f0a1028ef0470e.jpg	Egg	https://creativecommons.org/licenses/by/2.0/	Erik Burton	https://www.flickr.com/photos/13470115@N08/3571369369
-train/neg_14be91e9e9170798.jpg	Laptop	https://creativecommons.org/licenses/by/2.0/	Guwashi999	https://www.flickr.com/photos/guwashi999/2403410016
-train/neg_2ce5288dc0979410.jpg	Carpet	https://creativecommons.org/licenses/by/2.0/	Beth Scupham	https://www.flickr.com/photos/bethscupham/15537182334
-train/neg_ce4a4bcc5d2e2c72.jpg	Sock	https://creativecommons.org/licenses/by/2.0/	Clyde Robinson	https://www.flickr.com/photos/crobj/296508227
-train/neg_f2c475874e9493ee.jpg	Pillow	https://creativecommons.org/licenses/by/2.0/	SuSanA Secretariat	https://www.flickr.com/photos/gtzecosan/4359807987
-train/neg_38f481601bac0d4a.jpg	Pillow	https://creativecommons.org/licenses/by/2.0/	susi.bsu	https://www.flickr.com/photos/62517473@N06/6008824383
-train/neg_9036157b782b13e5.jpg	Carpet	https://creativecommons.org/licenses/by/2.0/	Tatsuo Yamashita	https://www.flickr.com/photos/yto/14033799676
-train/neg_bc052e81ba63c54b.jpg	Computer keyboard	https://creativecommons.org/licenses/by/2.0/	jrgd	https://www.flickr.com/photos/jrgd/4890449528
-train/neg_f3f0d8d0e89eb514.jpg	Floor	https://creativecommons.org/licenses/by/2.0/	TechShowNetwork	https://www.flickr.com/photos/techshownetwork/3198251597
-train/neg_3415068b66d5f914.jpg	Pebble	https://creativecommons.org/licenses/by/2.0/	Nancy &lt;I&#x27;m gonna SNAP!	https://www.flickr.com/photos/nancynance/15636153958
-train/neg_4e24222b68123ef3.jpg	Plastic bag	https://creativecommons.org/licenses/by/2.0/	Satoshi KINOKUNI	https://www.flickr.com/photos/nikunoki/8034306523
-train/neg_508351f4e658f011.jpg	Cable	https://creativecommons.org/licenses/by/2.0/	lizzie1326	https://www.flickr.com/photos/12482365@N03/5098238995/
-train/neg_141d8961e111ead7.jpg	Tablecloth	https://creativecommons.org/licenses/by/2.0/	Ewen Roberts	https://www.flickr.com/photos/donabelandewen/62858237
-train/neg_2b8a97d8d8075d4c.jpg	Egg	https://creativecommons.org/licenses/by/2.0/	Mark Guadalupe	https://www.flickr.com/photos/mak1e/16451817388
-train/neg_04a4f1bfadab2ebc.jpg	Bed sheet	https://creativecommons.org/licenses/by/2.0/	For Mitzy Moo &#x27;N You Too	https://www.flickr.com/photos/4mmnu2/12185721373
-train/neg_d3d276fdd1baebcd.jpg	Bed sheet	https://creativecommons.org/licenses/by/2.0/	Danny Bollinger	https://www.flickr.com/photos/dannybollinger/16659513287/
-train/neg_90a423ce751789aa.jpg	Curtain	https://creativecommons.org/licenses/by/2.0/	Bob Doran	https://www.flickr.com/photos/humblog/3524213535
-train/neg_f58dcd04e49ddbca.jpg	Carpet	https://creativecommons.org/licenses/by/2.0/	Linusblanket17	https://www.flickr.com/photos/linusblanket17/16101820225
-train/neg_70a32d9d1d757a63.jpg	Tablecloth	https://creativecommons.org/licenses/by/2.0/	Nayuki	https://www.flickr.com/photos/nayukim/5275183790
-train/neg_9d79a3329d8a5e44.jpg	Tennis ball	https://creativecommons.org/licenses/by/2.0/	black_throated_green_warbler	https://www.flickr.com/photos/black_throated_green_warbler/16075172761
-train/neg_42289714a6f6f7ff.jpg	Bed sheet	https://creativecommons.org/licenses/by/2.0/	Joe Hall	https://www.flickr.com/photos/joebeone/7316300986
-train/neg_f0288618004607e8.jpg	Towel	https://creativecommons.org/licenses/by/2.0/	Claudia Sanhueza	https://www.flickr.com/photos/delirioverdeanaranjado/2413168171/
-train/neg_ef8ecc46e90584a2.jpg	Pebble	https://creativecommons.org/licenses/by/2.0/	Gary Bembridge	https://www.flickr.com/photos/tipsfortravellers/3931246454
-train/neg_5f9f84b4c3752588.jpg	Pebble	https://creativecommons.org/licenses/by/2.0/	FromSandToGlass	https://www.flickr.com/photos/ericabreetoe/6475075571
-train/neg_5adeccd1fb70784e.jpg	Egg	https://creativecommons.org/licenses/by/2.0/	Joel Kramer	https://www.flickr.com/photos/75001512@N00/4593096994
-train/neg_32c96483781b6d69.jpg	Floor	https://creativecommons.org/licenses/by/2.0/	m anima	https://www.flickr.com/photos/23119895@N00/93441450
-train/neg_46fac9fee448fe52.jpg	Tile	https://creativecommons.org/licenses/by/2.0/	Jo del Corro	https://www.flickr.com/photos/ramenfuel/4810959292
-train/neg_6052498133234f23.jpg	Wall	https://creativecommons.org/licenses/by/2.0/	Andy Powell	https://www.flickr.com/photos/andypowe11/8148912796
-train/neg_01515554f0b1dd46.jpg	Sock	https://creativecommons.org/licenses/by/2.0/	Mae Catherine Melchor	https://www.flickr.com/photos/43584526@N06/19468058669
-train/neg_4b1ca2a999a7e86e.jpg	Egg	https://creativecommons.org/licenses/by/2.0/	thegarethwiscombe	https://www.flickr.com/photos/garethwiscombe/3553649678
-train/neg_f6a381b5d53c95da.jpg	Carpet	https://creativecommons.org/licenses/by/2.0/	Mirko Tobias Schäfer	https://www.flickr.com/photos/gastev/2780187513
-train/neg_527bec033e8298a5.jpg	Plastic bag	https://creativecommons.org/licenses/by/2.0/	bptakoma	https://www.flickr.com/photos/bptakoma/5711199711
-train/neg_c86d9e98a9e71b66.jpg	Cable	https://creativecommons.org/licenses/by/2.0/	pete.stephenson	https://www.flickr.com/photos/25470493@N02/18495059365
-train/neg_3aae8fc9e77f5b2a.jpg	Egg	https://creativecommons.org/licenses/by/2.0/	James Emery	https://www.flickr.com/photos/emeryjl/448774195
-train/neg_2744bcd8bb93c182.jpg	Sock	https://creativecommons.org/licenses/by/2.0/	~crystalina~	https://www.flickr.com/photos/crystalina/4301537
-train/neg_156c07f229206fde.jpg	Egg	https://creativecommons.org/licenses/by/2.0/	bookfinch	https://www.flickr.com/photos/mamsy/8400645732/
-train/neg_b47a31365609d4d6.jpg	Cable	https://creativecommons.org/licenses/by/2.0/	Simon Vanherweghe	https://www.flickr.com/photos/simonvanherweghe/4253105259
-train/neg_f8f29c3e04a76fa3.jpg	Pillow	https://creativecommons.org/licenses/by/2.0/	jef1947	https://www.flickr.com/photos/jef1947/10710431343
-train/neg_36e9bdcc1db928e1.jpg	Floor	https://creativecommons.org/licenses/by/2.0/	Warren Long	https://www.flickr.com/photos/warrenlong/3028188541
-train/neg_52590bd746122a6d.jpg	Carpet	https://creativecommons.org/licenses/by/2.0/	Cathy T	https://www.flickr.com/photos/misschatter/3440438608
-train/neg_399eb56dbffa49a2.jpg	Tennis ball	https://creativecommons.org/licenses/by/2.0/	Nacho	https://www.flickr.com/photos/gonmi/7913112818
-train/neg_e0fd5aedea8ec7d3.jpg	Laptop	https://creativecommons.org/licenses/by/2.0/	Paola Sucato	https://www.flickr.com/photos/ci_polla/21058848450
-train/neg_93f294e322096053.jpg	Golf ball	https://creativecommons.org/licenses/by/2.0/	stephendotcarter	https://www.flickr.com/photos/stephendotcarter/5611379508
-train/neg_ec102bc4970dc51d.jpg	Wall	https://creativecommons.org/licenses/by/2.0/	Simone Ramella	https://www.flickr.com/photos/ramella/8585841571
-train/neg_8ba1eddf57c8c0ba.jpg	Plastic bag	https://creativecommons.org/licenses/by/2.0/	Manolo Gómez	https://www.flickr.com/photos/verborrea/18831495431
-train/neg_85788b2e228e3deb.jpg	Laptop	https://creativecommons.org/licenses/by/2.0/	246-You	https://www.flickr.com/photos/fotois/4759074458
-train/neg_18e1f829a40f5724.jpg	Golf ball	https://creativecommons.org/licenses/by/2.0/	Zach Heller	https://www.flickr.com/photos/zachheller/4847939225
-train/neg_2b54c2b9e3f32387.jpg	Wall	https://creativecommons.org/licenses/by/2.0/	Mikel Larreategi	https://www.flickr.com/photos/erral/58939089
-train/neg_0dac5f830c452bda.jpg	Tile	https://creativecommons.org/licenses/by/2.0/	mac morrison	https://www.flickr.com/photos/cmmorrison/4644732125/
-train/neg_e36a8101a11ab5a2.jpg	Tile	https://creativecommons.org/licenses/by/2.0/	medea_material	https://www.flickr.com/photos/medea_material/3016745116
-train/neg_a2ca2ae81ec779ed.jpg	Wall	https://creativecommons.org/licenses/by/2.0/	amateur photography by michel	https://www.flickr.com/photos/119886413@N05/15467285474
-train/neg_63a6c1a686088729.jpg	Curtain	https://creativecommons.org/licenses/by/2.0/	Billy Brown	https://www.flickr.com/photos/billybrown00/5587141407/
-train/neg_af1b9485110e6a10.jpg	Towel	https://creativecommons.org/licenses/by/2.0/	Spreadshirt	https://www.flickr.com/photos/spreadshirt/9206872802
-train/neg_18c8303c966a5ac6.jpg	Pillow	https://creativecommons.org/licenses/by/2.0/	Didriks	https://www.flickr.com/photos/dinnerseries/14272501960
-train/neg_2300f2f6a22e5a87.jpg	Cable	https://creativecommons.org/licenses/by/2.0/	Nico Kaiser	https://www.flickr.com/photos/nicokaiser/7160160998
-train/neg_66840f96185e5bd9.jpg	Tablecloth	https://creativecommons.org/licenses/by/2.0/	Sharon Mollerus	https://www.flickr.com/photos/clairity/3062713643
-train/neg_a8ef3ae2c618e2ae.jpg	Bed sheet	https://creativecommons.org/licenses/by/2.0/	Phalinn Ooi	https://www.flickr.com/photos/phalinn/6096789604
-train/neg_467c2a12146a9510.jpg	Wall	https://creativecommons.org/licenses/by/2.0/	esharkj	https://www.flickr.com/photos/esharkj/7848762678
-train/neg_1d5bb9d9a8a49e84.jpg	Towel	https://creativecommons.org/licenses/by/2.0/	Miran  Rijavec	https://www.flickr.com/photos/miran/4142950300
-train/neg_030330de0366e384.jpg	Sock	https://creativecommons.org/licenses/by/2.0/	Taro the Shiba Inu	https://www.flickr.com/photos/_tar0_/4941417139
-train/neg_edcc25e8e53bfa61.jpg	Wall	https://creativecommons.org/licenses/by/2.0/	pat York	https://www.flickr.com/photos/60464669@N06/5514070030
-train/neg_d977bd2d81063b4a.jpg	Tile	https://creativecommons.org/licenses/by/2.0/	Joel Kramer	https://www.flickr.com/photos/75001512@N00/7067696493
-train/neg_cb5ae2394257d58b.jpg	Wall	https://creativecommons.org/licenses/by/2.0/	MartialArtsNomad.com	https://www.flickr.com/photos/superwebdeveloper/5632083350
-train/neg_100711c8d23ca237.jpg	Floor	https://creativecommons.org/licenses/by/2.0/	Juan Pablo Olmo	https://www.flickr.com/photos/juanpol/5534262632
-train/neg_666a614b3123dff9.jpg	Pillow	https://creativecommons.org/licenses/by/2.0/	Gail Frederick	https://www.flickr.com/photos/galfred/39744443
-train/neg_3494ea11e9f03461.jpg	Sock	https://creativecommons.org/licenses/by/2.0/	Tesla Aldrich	https://www.flickr.com/photos/12579989@N00/2346061109
-train/neg_900d000cfdbbde29.jpg	Pebble	https://creativecommons.org/licenses/by/2.0/	Paul VanDerWerf	https://www.flickr.com/photos/pavdw/17268769421
-train/neg_2e21b13ff742fcbf.jpg	Towel	https://creativecommons.org/licenses/by/2.0/	Chris Meller	https://www.flickr.com/photos/mellertime/2368958142
-train/neg_d8062dfe5897dca5.jpg	Tennis ball	https://creativecommons.org/licenses/by/2.0/	honey-bee	https://www.flickr.com/photos/honey-bee/500897935
-train/neg_8d0b1e22cc02c96a.jpg	Computer keyboard	https://creativecommons.org/licenses/by/2.0/	ToddonFlickr	https://www.flickr.com/photos/toddneville/130345425
-train/neg_9d053f3aee71d728.jpg	Pillow	https://creativecommons.org/licenses/by/2.0/	ABM -utvikling	https://www.flickr.com/photos/abmu/4324306319
-train/neg_40fb04ca4c274a51.jpg	Rock	https://creativecommons.org/licenses/by/2.0/	Bo Jørgensen	https://www.flickr.com/photos/bojoergensen/15997331656
-train/neg_71d9ddf01d5ac9b7.jpg	Bed sheet	https://creativecommons.org/licenses/by/2.0/	David Goehring	https://www.flickr.com/photos/carbonnyc/2264074528
-train/neg_c104450b5988f375.jpg	Tile	https://creativecommons.org/licenses/by/2.0/	Aslak Raanes	https://www.flickr.com/photos/aslakr/2259596731
-train/neg_fd3714e6f70b51b6.jpg	Floor	https://creativecommons.org/licenses/by/2.0/	Daniel Oines	https://www.flickr.com/photos/dno1967b/11759615895
-train/neg_0c8bb76065da74a6.jpg	Pillow	https://creativecommons.org/licenses/by/2.0/	Kim Schuster	https://www.flickr.com/photos/timmielee5359/4996738734
-train/neg_4be14bf34cb9607f.jpg	Curtain	https://creativecommons.org/licenses/by/2.0/	studio muscle	https://www.flickr.com/photos/studiomuscle/276230966
-train/neg_0e09767b7dab9237.jpg	Laptop	https://creativecommons.org/licenses/by/2.0/	fly	https://www.flickr.com/photos/butterflysha/59504871
-train/neg_657079b4a2bd7cb4.jpg	Wall	https://creativecommons.org/licenses/by/2.0/	Steven-L-Johnson	https://www.flickr.com/photos/stevenljohnson/14033882380
-train/neg_b7072b410bfdb1b9.jpg	Rock	https://creativecommons.org/licenses/by/2.0/	Emilian Robert Vicol	https://www.flickr.com/photos/free-stock/7058111417
-train/neg_445a97c7695962b8.jpg	Tablecloth	https://creativecommons.org/licenses/by/2.0/	Colby Stopa	https://www.flickr.com/photos/photographybycolby/14874897175
-train/neg_b6b94c404f5492ab.jpg	Laptop	https://creativecommons.org/licenses/by/2.0/	j bizzie	https://www.flickr.com/photos/k9d/2337832257
-train/neg_8ee03083f907f632.jpg	Tablecloth	https://creativecommons.org/licenses/by/2.0/	Ari Helminen	https://www.flickr.com/photos/picsoflife/4401140214
-train/neg_1268ab795838b2dc.jpg	Sock	https://creativecommons.org/licenses/by/2.0/	Ashley Riedell	https://www.flickr.com/photos/ashleyriedell/2627603457
-train/neg_33334fc1df5b2536.jpg	Rock	https://creativecommons.org/licenses/by/2.0/	Lance Vann	https://www.flickr.com/photos/_vann/4929765724/
-train/neg_abd62db07f3f5e83.jpg	Sock	https://creativecommons.org/licenses/by/2.0/	Alessandro Valli	https://www.flickr.com/photos/liquene/6870266706/
-train/neg_50741be9d9ae4fd3.jpg	Wall	https://creativecommons.org/licenses/by/2.0/	J Marsh	https://www.flickr.com/photos/75894308@N03/7481472376
-train/neg_f76353d8139db0fb.jpg	Tile	https://creativecommons.org/licenses/by/2.0/	joana alegria	https://www.flickr.com/photos/39089780@N00/352815823
-train/neg_a7c77186e6dc2c48.jpg	Wall	https://creativecommons.org/licenses/by/2.0/	Miquel C.	https://www.flickr.com/photos/shht/5637120486/
-train/neg_2830e771d3ca5a2f.jpg	Towel	https://creativecommons.org/licenses/by/2.0/	CONCAVO WHEELS	https://www.flickr.com/photos/concavowheels/8383097544
-train/neg_d5adb79ebdb42107.jpg	Tile	https://creativecommons.org/licenses/by/2.0/	Phuket@photographer.net	https://www.flickr.com/photos/linvoyage/16044251719
-train/neg_4919b5f1390f0ac9.jpg	Cable	https://creativecommons.org/licenses/by/2.0/	Tom Oinn	https://www.flickr.com/photos/tomoinn/11797174023
-train/neg_5460915b958dc08f.jpg	Floor	https://creativecommons.org/licenses/by/2.0/	Mike Fisher	https://www.flickr.com/photos/bfs_man/5938358685
-train/neg_0e178953ff649040.jpg	Cable	https://creativecommons.org/licenses/by/2.0/	Travis Goodspeed	https://www.flickr.com/photos/travisgoodspeed/2768232915
-train/neg_87a618d5e8e769f4.jpg	Floor	https://creativecommons.org/licenses/by/2.0/	Rennett Stowe	https://www.flickr.com/photos/tomsaint/3979000116
-train/neg_3aa3ab98fe42524c.jpg	Floor	https://creativecommons.org/licenses/by/2.0/	Christopher Sessums	https://www.flickr.com/photos/csessums/4526728793
-train/neg_2f0ee02a0866f697.jpg	Egg	https://creativecommons.org/licenses/by/2.0/	brett jordan	https://www.flickr.com/photos/x1brett/6225388083
-train/neg_328d85c3e2627405.jpg	Curtain	https://creativecommons.org/licenses/by/2.0/	bridgewatermbc	https://www.flickr.com/photos/bmbc/15346977171
-train/neg_4ebb0d0f6ca4109e.jpg	Towel	https://creativecommons.org/licenses/by/2.0/	Manuel J. Prieto	https://www.flickr.com/photos/vitike/2307588969
-train/neg_640cf0fa3d0519db.jpg	Wall	https://creativecommons.org/licenses/by/2.0/	Pedro Cambra	https://www.flickr.com/photos/pcambra/4395306641/
-train/neg_fbf51edf579a6971.jpg	Towel	https://creativecommons.org/licenses/by/2.0/	David Goodman	https://www.flickr.com/photos/dhgoodman/323218603
-train/neg_e80333c5111504d1.jpg	Plastic bag	https://creativecommons.org/licenses/by/2.0/	Takahiro Yamagiwa	https://www.flickr.com/photos/yama2k/21714905672
-train/neg_3563374a50b9f548.jpg	Sock	https://creativecommons.org/licenses/by/2.0/	Roberto Strauss	https://www.flickr.com/photos/56938735@N03/5681449706/
-train/neg_86b4c5e790b1122c.jpg	Floor	https://creativecommons.org/licenses/by/2.0/	Swiss Tchoukball	https://www.flickr.com/photos/swisstchoukball/15681639694
-train/neg_3de9fb40fccccbc7.jpg	Tablecloth	https://creativecommons.org/licenses/by/2.0/	Yvette  Tan	https://www.flickr.com/photos/glossmania/15173597196
-train/neg_63aae2fcaccefba7.jpg	Bed sheet	https://creativecommons.org/licenses/by/2.0/	Sam Stockman	https://www.flickr.com/photos/29848789@N04/8525599534
-train/neg_52bc589d16714e15.jpg	Bed sheet	https://creativecommons.org/licenses/by/2.0/	Joel Kramer	https://www.flickr.com/photos/75001512@N00/4143244611
-train/neg_cdb1e8621d1c624e.jpg	Floor	https://creativecommons.org/licenses/by/2.0/	sh-tom	https://www.flickr.com/photos/sh-tom/3849020140
+valid/neg_b259add9b4ca8bb4.jpg	Ice cream	https://creativecommons.org/licenses/by/2.0/	Mirymah ~✿	https://www.flickr.com/photos/all7lwa/16112365948
+valid/neg_34a47f60bc6f288b.jpg	Volleyball (Ball)	https://creativecommons.org/licenses/by/2.0/	Matt Rasmussen	https://www.flickr.com/photos/mattprasmussen/9325578845
+valid/neg_24073df6a9c58c6b.jpg	Ball (Object)	https://creativecommons.org/licenses/by/2.0/	EaglebrookSchool	https://www.flickr.com/photos/eaglebrook/12795094745
+valid/neg_a49055152165e0df.jpg	Ball (Object)	https://creativecommons.org/licenses/by/2.0/	Sabrina Reda	https://www.flickr.com/photos/sabrinareda/7625918088
+valid/neg_d005fa0373cf0558.jpg	Ball (Object)	https://creativecommons.org/licenses/by/2.0/	Camera Eye Photography	https://www.flickr.com/photos/camera_is_a_mirror_with_memory/15892744914
+valid/neg_9552d59e4b68a43e.jpg	Bowl	https://creativecommons.org/licenses/by/2.0/	ta@keshi kimi	https://www.flickr.com/photos/kimi-/4976357757
+valid/neg_70193f7825e12c5c.jpg	Bowl	https://creativecommons.org/licenses/by/2.0/	ResoluteSupportMedia	https://www.flickr.com/photos/isafmedia/3221646257
+valid/neg_146316cdeb2aef2a.jpg	Ball (Object)	https://creativecommons.org/licenses/by/2.0/	Juhan Sonin	https://www.flickr.com/photos/juhansonin/7994369759
+valid/neg_ce1f66c25b26ac2e.jpg	Mug	https://creativecommons.org/licenses/by/2.0/	Karl Baron	https://www.flickr.com/photos/kalleboo/5953288350
+valid/neg_2ef06f63f0bb6a09.jpg	Balloon	https://creativecommons.org/licenses/by/2.0/	GollyGforce - Living My Worst Nightmare	https://www.flickr.com/photos/see-through-the-eye-of-g/4734530051
+valid/neg_8bd2f57728700fd6.jpg	Bowl	https://creativecommons.org/licenses/by/2.0/	y kawahara	https://www.flickr.com/photos/grilledahi/864688846
+valid/neg_f689020e098b9d10.jpg	Football	https://creativecommons.org/licenses/by/2.0/	TedsBlog	https://www.flickr.com/photos/tedsblog/39939920
+train/neg_c5785ff1e9e009f0.jpg	Rugby ball	https://creativecommons.org/licenses/by/2.0/	Niko Pettersen	https://www.flickr.com/photos/nikopettersen/3002100464
+train/neg_416fbffd3f0c8726.jpg	Cauliflower	https://creativecommons.org/licenses/by/2.0/	Carlotta Roma	https://www.flickr.com/photos/127614255@N08/15312075835
+train/neg_db9381b272deff53.jpg	Cauliflower	https://creativecommons.org/licenses/by/2.0/	Keira McPhee	https://www.flickr.com/photos/keiramc/2998049475
+train/neg_dca3bdb491010875.jpg	Balloon	https://creativecommons.org/licenses/by/2.0/	laura wright	https://www.flickr.com/photos/thewrightmoments/17172718785
+train/neg_fa7ed8d452fdd735.jpg	Cauliflower	https://creativecommons.org/licenses/by/2.0/	C.E.I.P. Sambori	https://www.flickr.com/photos/45579842@N07/4186856785
+train/neg_2fa106ab30e658f8.jpg	Garlic	https://creativecommons.org/licenses/by/2.0/	Steven Depolo	https://www.flickr.com/photos/stevendepolo/15854897596
+train/neg_163d826dbf6d1de5.jpg	Candle	https://creativecommons.org/licenses/by/2.0/	karaian	https://www.flickr.com/photos/karaian/3279890030
+train/neg_8001afb4dde45db6.jpg	Ball (Object)	https://creativecommons.org/licenses/by/2.0/	Nan Palmero	https://www.flickr.com/photos/nanpalmero/17278736572
+train/neg_2d7a6c57f56faf45.jpg	Ball (Object)	https://creativecommons.org/licenses/by/2.0/	Bob Bob	https://www.flickr.com/photos/bobaliciouslondon/4592635949
+train/neg_743634cc3cd62061.jpg	Football	https://creativecommons.org/licenses/by/2.0/	Darrell Hancock	https://www.flickr.com/photos/dhancockjr/15184416772
+train/neg_9287cac294987178.jpg	Ice cream	https://creativecommons.org/licenses/by/2.0/	m01229	https://www.flickr.com/photos/39908901@N06/8745182597
+train/neg_8d8b3404db99c145.jpg	Onion	https://creativecommons.org/licenses/by/2.0/	david pacey	https://www.flickr.com/photos/63723146@N08/13148818093
+train/neg_8d55772261d8ef52.jpg	Football	https://creativecommons.org/licenses/by/2.0/	||read||	https://www.flickr.com/photos/llreadll/3660613389
+train/neg_575556e106bdd474.jpg	Ball (Object)	https://creativecommons.org/licenses/by/2.0/	Shazwan	https://www.flickr.com/photos/shazwan/367678665
+train/neg_b11480c02b3396f1.jpg	Cabbage	https://creativecommons.org/licenses/by/2.0/	instinctify	https://www.flickr.com/photos/instinctify/3992569865
+train/neg_f36caf03b91475b6.jpg	Ice cream	https://creativecommons.org/licenses/by/2.0/	syvwlch	https://www.flickr.com/photos/27164521@N00/10393820444
+train/neg_a22b0935d58029f2.jpg	Onion	https://creativecommons.org/licenses/by/2.0/	Alexis Lamster	https://www.flickr.com/photos/amlamster/6608862125
+train/neg_318e12be63daa7bb.jpg	Football	https://creativecommons.org/licenses/by/2.0/	Thailand Democrat Party	https://www.flickr.com/photos/democratparty/8008210041
+train/neg_34aebaebe39bfaf0.jpg	Mug	https://creativecommons.org/licenses/by/2.0/	Carles Caño Valls	https://www.flickr.com/photos/carlescv/6429975597
+train/neg_02400d99c2eaf5cc.jpg	Mug	https://creativecommons.org/licenses/by/2.0/	Savio Sebastian	https://www.flickr.com/photos/savioseb/5204008897
+train/neg_5946b7123a453adc.jpg	Rugby ball	https://creativecommons.org/licenses/by/2.0/	Johann Schwarz	https://www.flickr.com/photos/blacksportsphotos/8586660095/
+train/neg_fb3fed6d3c8c3276.jpg	Ball (Object)	https://creativecommons.org/licenses/by/2.0/	Kristijan Tkalec	https://www.flickr.com/photos/lapor/1136502277
+train/neg_038f0672c942894e.jpg	Candle	https://creativecommons.org/licenses/by/2.0/	Ed Bierman	https://www.flickr.com/photos/edbierman/5943858783/
+train/neg_2e2b0436bde738e7.jpg	Bowl	https://creativecommons.org/licenses/by/2.0/	Gideon	https://www.flickr.com/photos/malias/114173269
+train/neg_6cf22c15b38dd015.jpg	Cauliflower	https://creativecommons.org/licenses/by/2.0/	Miran  Rijavec	https://www.flickr.com/photos/miran/6235181782
+train/neg_1ec09605382cdc53.jpg	Volleyball (Ball)	https://creativecommons.org/licenses/by/2.0/	Craig Maccubbin	https://www.flickr.com/photos/cmaccubbin/2797202515
+train/neg_e12d3e0517297b73.jpg	Mug	https://creativecommons.org/licenses/by/2.0/	Dario Alvarez	https://www.flickr.com/photos/darioalvarez/13331653244
+train/neg_131bd083b0a68588.jpg	Balloon	https://creativecommons.org/licenses/by/2.0/	Bruna cs	https://www.flickr.com/photos/nabruuc/9129289710
+train/neg_705a34e58044ec9f.jpg	Rugby ball	https://creativecommons.org/licenses/by/2.0/	The Fleuette-deGuzman Alliance	https://www.flickr.com/photos/blargady/5651531320
+train/neg_e756a022cd10415e.jpg	Balloon	https://creativecommons.org/licenses/by/2.0/	Pitzer College	https://www.flickr.com/photos/pitzercollege/12373535055/
+train/neg_4044e980dba34f07.jpg	Pearl	https://creativecommons.org/licenses/by/2.0/	Yogendra Joshi	https://www.flickr.com/photos/yogendra174/5550587968
+train/neg_22efde6e6f42729b.jpg	Volleyball (Ball)	https://creativecommons.org/licenses/by/2.0/	Martin Cox	https://www.flickr.com/photos/martinwcox/9321991176
+train/neg_6bc17e16228c12fb.jpg	Mug	https://creativecommons.org/licenses/by/2.0/	Emma	https://www.flickr.com/photos/tomandemma/6541786335
+train/neg_a71f131cb2f881e2.jpg	Coconut	https://creativecommons.org/licenses/by/2.0/	Erin Pettigrew	https://www.flickr.com/photos/superfem/350981670
+train/neg_bf9edf21ea45694a.jpg	Garlic	https://creativecommons.org/licenses/by/2.0/	André Mouraux	https://www.flickr.com/photos/spigoo/7558501
+train/neg_21b97434e81b3608.jpg	Football	https://creativecommons.org/licenses/by/2.0/	Frédéric BISSON	https://www.flickr.com/photos/zigazou76/3677790200
+train/neg_eb77dbdddcd5cde3.jpg	Rugby ball	https://creativecommons.org/licenses/by/2.0/	Catch Central Florida	https://www.flickr.com/photos/visitcentralflorida/575745860
+train/neg_c7e5f40a0f905e5b.jpg	Volleyball (Ball)	https://creativecommons.org/licenses/by/2.0/	Eric Guo	https://www.flickr.com/photos/ericxguo/4131903000
+train/neg_148aa1f69209814f.jpg	Football	https://creativecommons.org/licenses/by/2.0/	Secretaria de Esporte e Lazer (Sedel)	https://www.flickr.com/photos/sedelmaranhao/9510677621
+train/neg_58fef762035a9507.jpg	Coconut	https://creativecommons.org/licenses/by/2.0/	TANAKA Juuyoh (田中十洋)	https://www.flickr.com/photos/tanaka_juuyoh/12759325854
+train/neg_ca61390a701237c7.jpg	Cabbage	https://creativecommons.org/licenses/by/2.0/	Abdulla Al Muhairi	https://www.flickr.com/photos/serdal/12927093924
+train/neg_ebaec8ee8b215089.jpg	Garlic	https://creativecommons.org/licenses/by/2.0/	anneheathen	https://www.flickr.com/photos/annethelibrarian/6824530753
+train/neg_a010098510698381.jpg	Rugby ball	https://creativecommons.org/licenses/by/2.0/	U.S. Army RDECOM	https://www.flickr.com/photos/rdecom/10729870335
+train/neg_21fae2fb6b1a92f2.jpg	Ball (Object)	https://creativecommons.org/licenses/by/2.0/	John Lustig	https://www.flickr.com/photos/john_lustig/2601372853
+train/neg_ae6342255e48f368.jpg	Ball (Object)	https://creativecommons.org/licenses/by/2.0/	Johan Sölve	https://www.flickr.com/photos/macsolve/8560910484
+train/neg_d437ae14608ce131.jpg	Football	https://creativecommons.org/licenses/by/2.0/	Jason	https://www.flickr.com/photos/jasoncd/2932373962
+train/neg_52c1e69c9a5c800b.jpg	Volleyball (Ball)	https://creativecommons.org/licenses/by/2.0/	Morten Skogly	https://www.flickr.com/photos/mskogly/1322676732
+train/neg_ffd7d9550916d32f.jpg	Onion	https://creativecommons.org/licenses/by/2.0/	Bob	https://www.flickr.com/photos/mullica/2724039538
+train/neg_508498cb605f7ee3.jpg	Football	https://creativecommons.org/licenses/by/2.0/	UnB Agência	https://www.flickr.com/photos/unb_agencia/6330329846
+train/neg_6d5331b50cdcee9d.jpg	Balloon	https://creativecommons.org/licenses/by/2.0/	Tyler Bolken	https://www.flickr.com/photos/tylerbolken/20643567779
+train/neg_8038ac8d1357dcfb.jpg	Volleyball (Ball)	https://creativecommons.org/licenses/by/2.0/	SteFou!	https://www.flickr.com/photos/stephen-oung/6124747296
+train/neg_a0edc4bad97b2137.jpg	Cabbage	https://creativecommons.org/licenses/by/2.0/	storebukkebruse	https://www.flickr.com/photos/tusnelda/7916045576
+train/neg_b664c27f1609e629.jpg	Balloon	https://creativecommons.org/licenses/by/2.0/	Thomas Won	https://www.flickr.com/photos/thomaswon9121/2836514862
+train/neg_7f91909c61190e81.jpg	Garlic	https://creativecommons.org/licenses/by/2.0/	F Delventhal	https://www.flickr.com/photos/krossbow/3718521590
+train/neg_81fa0b29edb1e9d0.jpg	Ice cream	https://creativecommons.org/licenses/by/2.0/	bioxzers	https://www.flickr.com/photos/bioxzers/5796495157
+train/neg_9265227e8b79f7b5.jpg	Ball (Object)	https://creativecommons.org/licenses/by/2.0/	Cristina Bejarano	https://www.flickr.com/photos/cristinabe/4254468917
+train/neg_d1ef645e3687eb31.jpg	Football	https://creativecommons.org/licenses/by/2.0/	Víctor Santa María	https://www.flickr.com/photos/victorsmaria/8210749615
+train/neg_fd81aed21b5d54b8.jpg	Balloon	https://creativecommons.org/licenses/by/2.0/	littlemoresunshine	https://www.flickr.com/photos/littlemoresunshine/10238994066
+train/neg_6b736f399900710c.jpg	Bowl	https://creativecommons.org/licenses/by/2.0/	judywitts	https://www.flickr.com/photos/overthetuscanstove/16182226523
+train/neg_5389dcfeff04de2f.jpg	Ball (Object)	https://creativecommons.org/licenses/by/2.0/	Jeff Boulter	https://www.flickr.com/photos/boulter/3084933988
+train/neg_8756ba1a0e478bfb.jpg	Candle	https://creativecommons.org/licenses/by/2.0/	Gusjer	https://www.flickr.com/photos/gusjer/2534177387
+train/neg_9183484c24b29df3.jpg	Ball (Object)	https://creativecommons.org/licenses/by/2.0/	Wolfrage	https://www.flickr.com/photos/wolfrage/246746925
+train/neg_84205dbe0ac4795c.jpg	Ball (Object)	https://creativecommons.org/licenses/by/2.0/	Cayobo	https://www.flickr.com/photos/cayobo/17718117096
+train/neg_448d7b8fa6bb9bf4.jpg	Balloon	https://creativecommons.org/licenses/by/2.0/	Clyde Robinson	https://www.flickr.com/photos/crobj/3956449820/
+train/neg_944775983939bda3.jpg	Candle	https://creativecommons.org/licenses/by/2.0/	Amber Rae	https://www.flickr.com/photos/amber-rae/4311867494
+train/neg_7fca1f80e164d965.jpg	Onion	https://creativecommons.org/licenses/by/2.0/	Rick McCharles	https://www.flickr.com/photos/rickmccharles/4436304632
+train/neg_bfaae3db9126ecf1.jpg	Bowl	https://creativecommons.org/licenses/by/2.0/	suhakri_hsu	https://www.flickr.com/photos/suhakri/3845825768
+train/neg_d48c113849caf90d.jpg	Rugby ball	https://creativecommons.org/licenses/by/2.0/	Dave Sizer	https://www.flickr.com/photos/aphid00/8554881371
+train/neg_53708238431a4e8b.jpg	Football	https://creativecommons.org/licenses/by/2.0/	VIA Gallery	https://www.flickr.com/photos/viagallery/6373805699
+train/neg_8866cb2b1797c203.jpg	Cabbage	https://creativecommons.org/licenses/by/2.0/	Tess Watson	https://www.flickr.com/photos/tessawatson/398066345
+train/neg_98c723b7112c7625.jpg	Pearl	https://creativecommons.org/licenses/by/2.0/	Theresa Thompson	https://www.flickr.com/photos/theresasthompson/2741012009
+valid/hfball_1757.jpg	volleyball	CC0 1.0	Hugging Face AIOmarRehan/Sports-Balls	https://huggingface.co/datasets/AIOmarRehan/Sports-Balls
+valid/hfball_0116.jpg	baseball	CC0 1.0	Hugging Face AIOmarRehan/Sports-Balls	https://huggingface.co/datasets/AIOmarRehan/Sports-Balls
+valid/hfball_0896.jpg	golf_ball	CC0 1.0	Hugging Face AIOmarRehan/Sports-Balls	https://huggingface.co/datasets/AIOmarRehan/Sports-Balls
+valid/hfball_1751.jpg	volleyball	CC0 1.0	Hugging Face AIOmarRehan/Sports-Balls	https://huggingface.co/datasets/AIOmarRehan/Sports-Balls
+valid/hfball_0565.jpg	cricket_ball	CC0 1.0	Hugging Face AIOmarRehan/Sports-Balls	https://huggingface.co/datasets/AIOmarRehan/Sports-Balls
+valid/hfball_0895.jpg	golf_ball	CC0 1.0	Hugging Face AIOmarRehan/Sports-Balls	https://huggingface.co/datasets/AIOmarRehan/Sports-Balls
+valid/hfball_1393.jpg	shuttlecock	CC0 1.0	Hugging Face AIOmarRehan/Sports-Balls	https://huggingface.co/datasets/AIOmarRehan/Sports-Balls
+valid/hfball_0007.jpg	american_football	CC0 1.0	Hugging Face AIOmarRehan/Sports-Balls	https://huggingface.co/datasets/AIOmarRehan/Sports-Balls
+valid/hfball_0331.jpg	billiard_ball	CC0 1.0	Hugging Face AIOmarRehan/Sports-Balls	https://huggingface.co/datasets/AIOmarRehan/Sports-Balls
+valid/hfball_0933.jpg	golf_ball	CC0 1.0	Hugging Face AIOmarRehan/Sports-Balls	https://huggingface.co/datasets/AIOmarRehan/Sports-Balls
+valid/hfball_0166.jpg	baseball	CC0 1.0	Hugging Face AIOmarRehan/Sports-Balls	https://huggingface.co/datasets/AIOmarRehan/Sports-Balls
+valid/hfball_1040.jpg	hockey_ball	CC0 1.0	Hugging Face AIOmarRehan/Sports-Balls	https://huggingface.co/datasets/AIOmarRehan/Sports-Balls
+valid/hfball_0743.jpg	football	CC0 1.0	Hugging Face AIOmarRehan/Sports-Balls	https://huggingface.co/datasets/AIOmarRehan/Sports-Balls
+valid/hfball_1788.jpg	volleyball	CC0 1.0	Hugging Face AIOmarRehan/Sports-Balls	https://huggingface.co/datasets/AIOmarRehan/Sports-Balls
+valid/hfball_1811.jpg	volleyball	CC0 1.0	Hugging Face AIOmarRehan/Sports-Balls	https://huggingface.co/datasets/AIOmarRehan/Sports-Balls
+valid/hfball_1104.jpg	hockey_ball	CC0 1.0	Hugging Face AIOmarRehan/Sports-Balls	https://huggingface.co/datasets/AIOmarRehan/Sports-Balls
+train/hfball_1616.jpg	tennis_ball	CC0 1.0	Hugging Face AIOmarRehan/Sports-Balls	https://huggingface.co/datasets/AIOmarRehan/Sports-Balls
+train/hfball_0327.jpg	billiard_ball	CC0 1.0	Hugging Face AIOmarRehan/Sports-Balls	https://huggingface.co/datasets/AIOmarRehan/Sports-Balls
+train/hfball_1036.jpg	hockey_ball	CC0 1.0	Hugging Face AIOmarRehan/Sports-Balls	https://huggingface.co/datasets/AIOmarRehan/Sports-Balls
+train/hfball_1026.jpg	hockey_ball	CC0 1.0	Hugging Face AIOmarRehan/Sports-Balls	https://huggingface.co/datasets/AIOmarRehan/Sports-Balls
+train/hfball_1771.jpg	volleyball	CC0 1.0	Hugging Face AIOmarRehan/Sports-Balls	https://huggingface.co/datasets/AIOmarRehan/Sports-Balls
+train/hfball_1287.jpg	rugby_ball	CC0 1.0	Hugging Face AIOmarRehan/Sports-Balls	https://huggingface.co/datasets/AIOmarRehan/Sports-Balls
+train/hfball_0952.jpg	golf_ball	CC0 1.0	Hugging Face AIOmarRehan/Sports-Balls	https://huggingface.co/datasets/AIOmarRehan/Sports-Balls
+train/hfball_0152.jpg	baseball	CC0 1.0	Hugging Face AIOmarRehan/Sports-Balls	https://huggingface.co/datasets/AIOmarRehan/Sports-Balls
+train/hfball_1328.jpg	rugby_ball	CC0 1.0	Hugging Face AIOmarRehan/Sports-Balls	https://huggingface.co/datasets/AIOmarRehan/Sports-Balls
+train/hfball_0554.jpg	bowling_ball	CC0 1.0	Hugging Face AIOmarRehan/Sports-Balls	https://huggingface.co/datasets/AIOmarRehan/Sports-Balls
+train/hfball_0351.jpg	billiard_ball	CC0 1.0	Hugging Face AIOmarRehan/Sports-Balls	https://huggingface.co/datasets/AIOmarRehan/Sports-Balls
+train/hfball_0676.jpg	cricket_ball	CC0 1.0	Hugging Face AIOmarRehan/Sports-Balls	https://huggingface.co/datasets/AIOmarRehan/Sports-Balls
+train/hfball_1594.jpg	table_tennis_ball	CC0 1.0	Hugging Face AIOmarRehan/Sports-Balls	https://huggingface.co/datasets/AIOmarRehan/Sports-Balls
+train/hfball_0398.jpg	billiard_ball	CC0 1.0	Hugging Face AIOmarRehan/Sports-Balls	https://huggingface.co/datasets/AIOmarRehan/Sports-Balls
+train/hfball_1376.jpg	shuttlecock	CC0 1.0	Hugging Face AIOmarRehan/Sports-Balls	https://huggingface.co/datasets/AIOmarRehan/Sports-Balls
+train/hfball_1539.jpg	table_tennis_ball	CC0 1.0	Hugging Face AIOmarRehan/Sports-Balls	https://huggingface.co/datasets/AIOmarRehan/Sports-Balls
+train/hfball_1768.jpg	volleyball	CC0 1.0	Hugging Face AIOmarRehan/Sports-Balls	https://huggingface.co/datasets/AIOmarRehan/Sports-Balls
+train/hfball_0008.jpg	american_football	CC0 1.0	Hugging Face AIOmarRehan/Sports-Balls	https://huggingface.co/datasets/AIOmarRehan/Sports-Balls
+train/hfball_1375.jpg	shuttlecock	CC0 1.0	Hugging Face AIOmarRehan/Sports-Balls	https://huggingface.co/datasets/AIOmarRehan/Sports-Balls
+train/hfball_0461.jpg	bowling_ball	CC0 1.0	Hugging Face AIOmarRehan/Sports-Balls	https://huggingface.co/datasets/AIOmarRehan/Sports-Balls
+train/hfball_0048.jpg	american_football	CC0 1.0	Hugging Face AIOmarRehan/Sports-Balls	https://huggingface.co/datasets/AIOmarRehan/Sports-Balls
+train/hfball_0686.jpg	cricket_ball	CC0 1.0	Hugging Face AIOmarRehan/Sports-Balls	https://huggingface.co/datasets/AIOmarRehan/Sports-Balls
+train/hfball_0563.jpg	cricket_ball	CC0 1.0	Hugging Face AIOmarRehan/Sports-Balls	https://huggingface.co/datasets/AIOmarRehan/Sports-Balls
+train/hfball_1045.jpg	hockey_ball	CC0 1.0	Hugging Face AIOmarRehan/Sports-Balls	https://huggingface.co/datasets/AIOmarRehan/Sports-Balls
+train/hfball_1530.jpg	table_tennis_ball	CC0 1.0	Hugging Face AIOmarRehan/Sports-Balls	https://huggingface.co/datasets/AIOmarRehan/Sports-Balls
+train/hfball_0455.jpg	bowling_ball	CC0 1.0	Hugging Face AIOmarRehan/Sports-Balls	https://huggingface.co/datasets/AIOmarRehan/Sports-Balls
+train/hfball_1727.jpg	tennis_ball	CC0 1.0	Hugging Face AIOmarRehan/Sports-Balls	https://huggingface.co/datasets/AIOmarRehan/Sports-Balls
+train/hfball_0246.jpg	basketball	CC0 1.0	Hugging Face AIOmarRehan/Sports-Balls	https://huggingface.co/datasets/AIOmarRehan/Sports-Balls
+train/hfball_0618.jpg	cricket_ball	CC0 1.0	Hugging Face AIOmarRehan/Sports-Balls	https://huggingface.co/datasets/AIOmarRehan/Sports-Balls
+train/hfball_1277.jpg	rugby_ball	CC0 1.0	Hugging Face AIOmarRehan/Sports-Balls	https://huggingface.co/datasets/AIOmarRehan/Sports-Balls
+train/hfball_0501.jpg	bowling_ball	CC0 1.0	Hugging Face AIOmarRehan/Sports-Balls	https://huggingface.co/datasets/AIOmarRehan/Sports-Balls
+train/hfball_1576.jpg	table_tennis_ball	CC0 1.0	Hugging Face AIOmarRehan/Sports-Balls	https://huggingface.co/datasets/AIOmarRehan/Sports-Balls
+train/hfball_0001.jpg	american_football	CC0 1.0	Hugging Face AIOmarRehan/Sports-Balls	https://huggingface.co/datasets/AIOmarRehan/Sports-Balls
+train/hfball_1689.jpg	tennis_ball	CC0 1.0	Hugging Face AIOmarRehan/Sports-Balls	https://huggingface.co/datasets/AIOmarRehan/Sports-Balls
+train/hfball_1383.jpg	shuttlecock	CC0 1.0	Hugging Face AIOmarRehan/Sports-Balls	https://huggingface.co/datasets/AIOmarRehan/Sports-Balls
+train/hfball_1032.jpg	hockey_ball	CC0 1.0	Hugging Face AIOmarRehan/Sports-Balls	https://huggingface.co/datasets/AIOmarRehan/Sports-Balls
+train/hfball_0421.jpg	billiard_ball	CC0 1.0	Hugging Face AIOmarRehan/Sports-Balls	https://huggingface.co/datasets/AIOmarRehan/Sports-Balls
+train/hfball_0175.jpg	baseball	CC0 1.0	Hugging Face AIOmarRehan/Sports-Balls	https://huggingface.co/datasets/AIOmarRehan/Sports-Balls
+train/hfball_1201.jpg	hockey_puck	CC0 1.0	Hugging Face AIOmarRehan/Sports-Balls	https://huggingface.co/datasets/AIOmarRehan/Sports-Balls
+train/hfball_0011.jpg	american_football	CC0 1.0	Hugging Face AIOmarRehan/Sports-Balls	https://huggingface.co/datasets/AIOmarRehan/Sports-Balls
+train/hfball_0989.jpg	golf_ball	CC0 1.0	Hugging Face AIOmarRehan/Sports-Balls	https://huggingface.co/datasets/AIOmarRehan/Sports-Balls
+train/hfball_0013.jpg	american_football	CC0 1.0	Hugging Face AIOmarRehan/Sports-Balls	https://huggingface.co/datasets/AIOmarRehan/Sports-Balls
+train/hfball_0400.jpg	billiard_ball	CC0 1.0	Hugging Face AIOmarRehan/Sports-Balls	https://huggingface.co/datasets/AIOmarRehan/Sports-Balls
+train/hfball_0114.jpg	baseball	CC0 1.0	Hugging Face AIOmarRehan/Sports-Balls	https://huggingface.co/datasets/AIOmarRehan/Sports-Balls
+train/hfball_1258.jpg	rugby_ball	CC0 1.0	Hugging Face AIOmarRehan/Sports-Balls	https://huggingface.co/datasets/AIOmarRehan/Sports-Balls
+train/hfball_0766.jpg	football	CC0 1.0	Hugging Face AIOmarRehan/Sports-Balls	https://huggingface.co/datasets/AIOmarRehan/Sports-Balls
+train/hfball_1747.jpg	volleyball	CC0 1.0	Hugging Face AIOmarRehan/Sports-Balls	https://huggingface.co/datasets/AIOmarRehan/Sports-Balls
+train/hfball_0535.jpg	bowling_ball	CC0 1.0	Hugging Face AIOmarRehan/Sports-Balls	https://huggingface.co/datasets/AIOmarRehan/Sports-Balls
+train/hfball_0212.jpg	basketball	CC0 1.0	Hugging Face AIOmarRehan/Sports-Balls	https://huggingface.co/datasets/AIOmarRehan/Sports-Balls
+train/hfball_1247.jpg	rugby_ball	CC0 1.0	Hugging Face AIOmarRehan/Sports-Balls	https://huggingface.co/datasets/AIOmarRehan/Sports-Balls
+train/hfball_0360.jpg	billiard_ball	CC0 1.0	Hugging Face AIOmarRehan/Sports-Balls	https://huggingface.co/datasets/AIOmarRehan/Sports-Balls
+train/hfball_0122.jpg	baseball	CC0 1.0	Hugging Face AIOmarRehan/Sports-Balls	https://huggingface.co/datasets/AIOmarRehan/Sports-Balls
+train/hfball_1127.jpg	hockey_puck	CC0 1.0	Hugging Face AIOmarRehan/Sports-Balls	https://huggingface.co/datasets/AIOmarRehan/Sports-Balls
+train/hfball_0023.jpg	american_football	CC0 1.0	Hugging Face AIOmarRehan/Sports-Balls	https://huggingface.co/datasets/AIOmarRehan/Sports-Balls
+train/hfball_1499.jpg	table_tennis_ball	CC0 1.0	Hugging Face AIOmarRehan/Sports-Balls	https://huggingface.co/datasets/AIOmarRehan/Sports-Balls
+train/hfball_0199.jpg	basketball	CC0 1.0	Hugging Face AIOmarRehan/Sports-Balls	https://huggingface.co/datasets/AIOmarRehan/Sports-Balls
+train/hfball_0128.jpg	baseball	CC0 1.0	Hugging Face AIOmarRehan/Sports-Balls	https://huggingface.co/datasets/AIOmarRehan/Sports-Balls
+train/hfball_1255.jpg	rugby_ball	CC0 1.0	Hugging Face AIOmarRehan/Sports-Balls	https://huggingface.co/datasets/AIOmarRehan/Sports-Balls
+train/hfball_1643.jpg	tennis_ball	CC0 1.0	Hugging Face AIOmarRehan/Sports-Balls	https://huggingface.co/datasets/AIOmarRehan/Sports-Balls
+train/hfball_1427.jpg	shuttlecock	CC0 1.0	Hugging Face AIOmarRehan/Sports-Balls	https://huggingface.co/datasets/AIOmarRehan/Sports-Balls
+train/hfball_1151.jpg	hockey_puck	CC0 1.0	Hugging Face AIOmarRehan/Sports-Balls	https://huggingface.co/datasets/AIOmarRehan/Sports-Balls
+train/hfball_1044.jpg	hockey_ball	CC0 1.0	Hugging Face AIOmarRehan/Sports-Balls	https://huggingface.co/datasets/AIOmarRehan/Sports-Balls
+train/hfball_0941.jpg	golf_ball	CC0 1.0	Hugging Face AIOmarRehan/Sports-Balls	https://huggingface.co/datasets/AIOmarRehan/Sports-Balls
+train/hfball_0825.jpg	football	CC0 1.0	Hugging Face AIOmarRehan/Sports-Balls	https://huggingface.co/datasets/AIOmarRehan/Sports-Balls
+train/hfball_1512.jpg	table_tennis_ball	CC0 1.0	Hugging Face AIOmarRehan/Sports-Balls	https://huggingface.co/datasets/AIOmarRehan/Sports-Balls
+train/hfball_0447.jpg	bowling_ball	CC0 1.0	Hugging Face AIOmarRehan/Sports-Balls	https://huggingface.co/datasets/AIOmarRehan/Sports-Balls
+train/hfball_0576.jpg	cricket_ball	CC0 1.0	Hugging Face AIOmarRehan/Sports-Balls	https://huggingface.co/datasets/AIOmarRehan/Sports-Balls
+train/hfball_1337.jpg	rugby_ball	CC0 1.0	Hugging Face AIOmarRehan/Sports-Balls	https://huggingface.co/datasets/AIOmarRehan/Sports-Balls
+train/hfball_0800.jpg	football	CC0 1.0	Hugging Face AIOmarRehan/Sports-Balls	https://huggingface.co/datasets/AIOmarRehan/Sports-Balls
+train/hfball_0224.jpg	basketball	CC0 1.0	Hugging Face AIOmarRehan/Sports-Balls	https://huggingface.co/datasets/AIOmarRehan/Sports-Balls
+train/hfball_1182.jpg	hockey_puck	CC0 1.0	Hugging Face AIOmarRehan/Sports-Balls	https://huggingface.co/datasets/AIOmarRehan/Sports-Balls
+train/hfball_1690.jpg	tennis_ball	CC0 1.0	Hugging Face AIOmarRehan/Sports-Balls	https://huggingface.co/datasets/AIOmarRehan/Sports-Balls
+train/hfball_1136.jpg	hockey_puck	CC0 1.0	Hugging Face AIOmarRehan/Sports-Balls	https://huggingface.co/datasets/AIOmarRehan/Sports-Balls
+train/hfball_1349.jpg	shuttlecock	CC0 1.0	Hugging Face AIOmarRehan/Sports-Balls	https://huggingface.co/datasets/AIOmarRehan/Sports-Balls
+train/hfball_0787.jpg	football	CC0 1.0	Hugging Face AIOmarRehan/Sports-Balls	https://huggingface.co/datasets/AIOmarRehan/Sports-Balls
+train/hfball_0205.jpg	basketball	CC0 1.0	Hugging Face AIOmarRehan/Sports-Balls	https://huggingface.co/datasets/AIOmarRehan/Sports-Balls
+train/hfball_0489.jpg	bowling_ball	CC0 1.0	Hugging Face AIOmarRehan/Sports-Balls	https://huggingface.co/datasets/AIOmarRehan/Sports-Balls
+train/hfball_0920.jpg	golf_ball	CC0 1.0	Hugging Face AIOmarRehan/Sports-Balls	https://huggingface.co/datasets/AIOmarRehan/Sports-Balls
+train/hfball_0202.jpg	basketball	CC0 1.0	Hugging Face AIOmarRehan/Sports-Balls	https://huggingface.co/datasets/AIOmarRehan/Sports-Balls
+train/hfball_1553.jpg	table_tennis_ball	CC0 1.0	Hugging Face AIOmarRehan/Sports-Balls	https://huggingface.co/datasets/AIOmarRehan/Sports-Balls
+train/hfball_0713.jpg	football	CC0 1.0	Hugging Face AIOmarRehan/Sports-Balls	https://huggingface.co/datasets/AIOmarRehan/Sports-Balls
+train/hfball_1622.jpg	tennis_ball	CC0 1.0	Hugging Face AIOmarRehan/Sports-Balls	https://huggingface.co/datasets/AIOmarRehan/Sports-Balls
+train/hfball_0597.jpg	cricket_ball	CC0 1.0	Hugging Face AIOmarRehan/Sports-Balls	https://huggingface.co/datasets/AIOmarRehan/Sports-Balls
+train/hfball_1670.jpg	tennis_ball	CC0 1.0	Hugging Face AIOmarRehan/Sports-Balls	https://huggingface.co/datasets/AIOmarRehan/Sports-Balls
+train/hfball_1452.jpg	shuttlecock	CC0 1.0	Hugging Face AIOmarRehan/Sports-Balls	https://huggingface.co/datasets/AIOmarRehan/Sports-Balls
+train/hfball_0747.jpg	football	CC0 1.0	Hugging Face AIOmarRehan/Sports-Balls	https://huggingface.co/datasets/AIOmarRehan/Sports-Balls
+train/hfball_1191.jpg	hockey_puck	CC0 1.0	Hugging Face AIOmarRehan/Sports-Balls	https://huggingface.co/datasets/AIOmarRehan/Sports-Balls
+train/hfball_0234.jpg	basketball	CC0 1.0	Hugging Face AIOmarRehan/Sports-Balls	https://huggingface.co/datasets/AIOmarRehan/Sports-Balls
+train/hfball_1155.jpg	hockey_puck	CC0 1.0	Hugging Face AIOmarRehan/Sports-Balls	https://huggingface.co/datasets/AIOmarRehan/Sports-Balls
