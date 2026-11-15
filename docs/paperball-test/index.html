@@ -32,6 +32,9 @@
   .stats span { color:var(--muted); font-size:.8rem; }
   #status { color:var(--muted); font-size:.9rem; margin:4px 0 0; min-height:1.3em; }
   #status.err { color:var(--warn); }
+  a { color:var(--accent); }
+  .links { display:flex; flex-wrap:wrap; gap:6px 16px; margin:0 0 14px; font-size:.92rem; font-weight:600; }
+  footer { color:var(--muted); font-size:.8rem; margin-top:16px; }
   ul { margin:6px 0 0 18px; padding:0; color:var(--muted); font-size:.88rem; }
 </style>
 </head>
@@ -39,6 +42,11 @@
 <main>
   <h1>Paper-ball detector test</h1>
   <p class="sub">Runs the YOLO11n model entirely in this browser. No picture leaves your phone.</p>
+  <p class="links">
+    <a href="https://github.com/M-Hasaam/Autonomous-Litter-Collector">GitHub repository</a>
+    <a href="https://github.com/M-Hasaam/Autonomous-Litter-Collector/releases/tag/v1.0">Model v1.0 and results</a>
+    <a href="https://github.com/M-Hasaam/Autonomous-Litter-Collector/tree/master/Training/paper_ball_detector">Training code and dataset</a>
+  </p>
 
   <div class="view">
     <canvas id="view" width="640" height="480"></canvas>
@@ -74,6 +82,12 @@
       <li>"Pick photo" tests a single picture from your photo library or camera.</li>
     </ul>
   </div>
+
+  <footer>
+    Model: YOLO11n fine-tuned for paper balls (v1.0), 640x640, run with onnxruntime-web. v1 sometimes fires on white or bright surfaces,
+    which is what this page helps to check. YOLO11 is AGPL-3.0; the training data is CC BY 4.0 and other open licences, see the
+    <a href="https://github.com/M-Hasaam/Autonomous-Litter-Collector#licences">repository</a>.
+  </footer>
 </main>
 
 <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.17.3/dist/ort.min.js"></script>
