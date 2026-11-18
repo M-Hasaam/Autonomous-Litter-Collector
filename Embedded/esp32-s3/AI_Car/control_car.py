@@ -23,6 +23,7 @@ ROLL_SIGN = 1    # +1: positive = leaning right
 SERVO_SPEED = 60
 SERVO_SEND_INTERVAL = 0.06  # seconds between live commands while dragging a slider
 SERVO_NAMES = ["Base Rotation", "Shoulder", "Elbow", "Gripper"]
+SERVO_DEFAULT_ANGLES = [90, 120, 90, 90]  # keep in sync with SERVO_DEFAULTS in AI_Car.ino (shoulder at 90 hits the ultrasonic sensor)
 
 class AICarController:
     def __init__(self, root):
@@ -126,7 +127,7 @@ class AICarController:
             top.pack(fill="x")
             ttk.Label(top, text=f"Servo {i} — {name}", font=("Segoe UI", 10, "bold")).pack(side="left")
 
-            value_var = tk.StringVar(value="90°")
+            value_var = tk.StringVar(value=f"{SERVO_DEFAULT_ANGLES[i]}°")
             self.servo_values.append(value_var)
             ttk.Label(top, textvariable=value_var, width=6, anchor="e").pack(side="right")
 
@@ -139,7 +140,7 @@ class AICarController:
                 showvalue=False,
                 command=lambda value, index=i: self._slider_changed(index, value),
             )
-            scale.set(90)
+            scale.set(SERVO_DEFAULT_ANGLES[i])
             scale.pack(fill="x")
             scale.bind("<ButtonPress-1>", lambda event, index=i: self.dragging.add(index))
             scale.bind("<ButtonRelease-1>", lambda event, index=i: self._servo_released(index))
@@ -166,7 +167,7 @@ class AICarController:
 
         preset_row = ttk.Frame(servos_frame)
         preset_row.pack(fill="x", pady=(8, 0))
-        ttk.Button(preset_row, text="All center (90°)", command=lambda: self._set_all_servos(90)).pack(side="left")
+        ttk.Button(preset_row, text="All default", command=self._set_default_servos).pack(side="left")
         ttk.Button(preset_row, text="All 0°", command=lambda: self._set_all_servos(0)).pack(side="left", padx=6)
         ttk.Button(preset_row, text="All 180°", command=lambda: self._set_all_servos(180)).pack(side="left")
 
@@ -375,6 +376,11 @@ class AICarController:
     def _set_all_servos(self, angle):
         for index, scale in enumerate(self.servo_scales):
             scale.set(angle)
+            self._send_servo(index)
+
+    def _set_default_servos(self):
+        for index, scale in enumerate(self.servo_scales):
+            scale.set(SERVO_DEFAULT_ANGLES[index])
             self._send_servo(index)
 
     def _on_key_press(self, event):

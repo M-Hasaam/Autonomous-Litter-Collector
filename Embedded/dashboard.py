@@ -42,6 +42,7 @@ DISTANCE_CHAR_UUID = "11223344-5566-7788-99AA-BBCCDDEEFF00"  # distance cm, "-1"
 MPU_CHAR_UUID = "22334455-6677-8899-AABB-CCDDEEFF0011"       # "yaw,pitch,roll,gx,gy,gz,ax,ay,az"
 
 SERVO_NAMES = ["Base Rotation", "Shoulder", "Elbow", "Gripper"]
+SERVO_DEFAULT_ANGLES = [90, 120, 90, 90]   # keep in sync with SERVO_DEFAULTS in AI_Car.ino (shoulder at 90 hits the ultrasonic sensor)
 SERVO_SPEED = 60                  # default deg/s
 CAR_SPEED_DEFAULT = 100           # wheel speed in percent (one slider for all wheels)
 CAR_SPEED_MIN = 20                # below this the wheels usually stall
@@ -875,10 +876,10 @@ class Dashboard:
             top = tk.Frame(col, bg=CARD)
             top.pack(fill="x")
             tk.Label(top, text=f"{i} · {name}", bg=CARD, fg=TEXT, font=(FONT, 10, "bold")).pack(side="left")
-            val = tk.StringVar(value="90°")
+            val = tk.StringVar(value=f"{SERVO_DEFAULT_ANGLES[i]}°")
             self.servo_values.append(val)
             tk.Label(top, textvariable=val, bg=CARD, fg=ACCENT, font=(FONT, 10, "bold")).pack(side="right")
-            scale = self._scale(col, 0, 180, 90, lambda v, idx=i: self._slider_changed(idx, v))
+            scale = self._scale(col, 0, 180, SERVO_DEFAULT_ANGLES[i], lambda v, idx=i: self._slider_changed(idx, v))
             scale.pack(fill="x")
             scale.bind("<ButtonPress-1>", lambda e, idx=i: self.dragging.add(idx))
             scale.bind("<ButtonRelease-1>", lambda e, idx=i: self._servo_released(idx))
@@ -893,7 +894,7 @@ class Dashboard:
             self.speed_scales.append(speed)
         presets = tk.Frame(s, bg=CARD)
         presets.grid(row=1, column=0, columnspan=len(SERVO_NAMES), sticky="w", pady=(8, 0))
-        self._button(presets, "All center 90°", lambda: self._set_all_servos(90)).pack(side="left")
+        self._button(presets, "All default", self._set_default_servos).pack(side="left")
         self._button(presets, "All 0°", lambda: self._set_all_servos(0)).pack(side="left", padx=6)
         self._button(presets, "All 180°", lambda: self._set_all_servos(180)).pack(side="left")
 
@@ -1325,6 +1326,11 @@ class Dashboard:
     def _set_all_servos(self, angle):
         for index, scale in enumerate(self.servo_scales):
             scale.set(angle)
+            self._send_servo(index)
+
+    def _set_default_servos(self):
+        for index, scale in enumerate(self.servo_scales):
+            scale.set(SERVO_DEFAULT_ANGLES[index])
             self._send_servo(index)
 
     # ---- keyboard / shutdown -----------------------------------------

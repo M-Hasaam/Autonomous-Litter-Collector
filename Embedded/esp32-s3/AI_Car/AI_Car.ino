@@ -111,8 +111,11 @@ const uint32_t MOTOR_PWM_MAX = (1UL << MOTOR_PWM_BITS) - 1;
 int motorSpeedPct = 100;
 int motorState[4] = {0, 0, 0, 0};  // last requested direction (1 = on) for LU, LD, RU, RD
 
-int currentAngles[NUM_SERVOS] = {90, 90, 90, 90};
-int targetAngles[NUM_SERVOS] = {90, 90, 90, 90};
+// Start-up angle of each servo. The shoulder (servo 1) starts at 120: at 90 it hits the ultrasonic sensor.
+#define SERVO_DEFAULTS {90, 120, 90, 90}
+const int SERVO_DEFAULT_ANGLES[NUM_SERVOS] = SERVO_DEFAULTS;
+int currentAngles[NUM_SERVOS] = SERVO_DEFAULTS;
+int targetAngles[NUM_SERVOS] = SERVO_DEFAULTS;
 int servoSpeeds[NUM_SERVOS] = {60, 60, 60, 60};  // degrees per second
 unsigned long lastServoUpdate[NUM_SERVOS] = {0, 0, 0, 0};
 
@@ -584,7 +587,7 @@ void ensureAdvertising() {
   }
 }
 
-// Starts the servo PWM (50 Hz) once Bluetooth is up and moves every servo to 90 degrees. Servos need their own 5V supply.
+// Starts the servo PWM (50 Hz) once Bluetooth is up and moves every servo to its default angle. Servos need their own 5V supply.
 void initServosLate() {
   if (servosReady || millis() < servoInitAt) return;
   for (int i = 0; i < NUM_SERVOS; i++) {
@@ -593,7 +596,7 @@ void initServosLate() {
     }
   }
   servosReady = true;
-  for (int i = 0; i < NUM_SERVOS; i++) writeServo(i, 90);
+  for (int i = 0; i < NUM_SERVOS; i++) writeServo(i, SERVO_DEFAULT_ANGLES[i]);
   markStage(9);
 }
 
