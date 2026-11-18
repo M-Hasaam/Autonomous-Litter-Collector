@@ -7,7 +7,9 @@
 #include <math.h>
 
 // HC-SR04 ultrasonic sensor pins.
-// ECHO is 5V, so it goes through a divider (1k in series, 2k to GND) before the pin.
+// The sensor is powered from the S3's 3V3 pin (on the converter's 5V it sent the S3 into a brownout restart loop
+// at power-on), so ECHO is 3.3V and goes straight to the pin. If you power it from 5V again, put a divider on ECHO
+// (1k in series, 2k to GND): the S3 pins are not 5V tolerant.
 const int TRIG_PIN = 10;
 const int ECHO_PIN = 11;
 
@@ -33,6 +35,21 @@ const float MPU_GYRO_LSB_PER_DPS = 65.5f;         // gyro range +-500 deg/s
 const float MPU_YAW_DEADBAND_DPS = 0.3f;          // ignore tiny gyro noise so heading doesn't creep
 const int MPU_CAL_SAMPLES = 200;                  // gyro offset calibration (keep the car still)
 const char* MPU_CHAR_UUID = "22334455-6677-8899-AABB-CCDDEEFF0011";
+
+// Built-in RGB status LED (GPIO 48 on most ESP32-S3 boards; if your board shows no colour, its LED is on another pin).
+void statusLed(uint8_t r, uint8_t g, uint8_t b) {
+#ifdef RGB_BUILTIN
+  neopixelWrite(RGB_BUILTIN, r, g, b);
+#endif
+}
+
+// Start-up step marker kept in RTC memory (survives a brownout/crash reset), so the next boot can show on the LED
+// how far the previous start-up got. Steps: 1 motors, 2 sensor pins, 3 encoders, 4 MPU, 5 BLE init,
+// 6 GATT service, 7 advertising started (setup finished), 8 main loop running, 9 servos started.
+#define BOOT_MAGIC 0xB007CAFEu
+RTC_NOINIT_ATTR uint32_t bootMagic;
+RTC_NOINIT_ATTR uint8_t bootStage;
+void markStage(uint8_t step) { bootMagic = BOOT_MAGIC; bootStage = step; }
 
 BLEServer* pServer = nullptr;
 BLECharacteristic* pCharacteristic = nullptr;
@@ -73,7 +90,14 @@ const int SERVO_PWM_BITS = 14;
 const int SERVO_MIN_US = 500;
 const int SERVO_MAX_US = 2400;
 
+// The servo PWM pins stay silent at boot and are only started ~1 s after Bluetooth is advertising (initServosLate).
+// Driving the servo signal wires while the radio starts adds current at the worst moment, and it back-feeds
+// servos whose own supply is off (that made the board brown out right as Bluetooth started).
+bool servosReady = false;
+unsigned long servoInitAt = 0;
+
 void writeServo(int index, int angle) {
+  if (!servosReady) return;
   uint32_t us = SERVO_MIN_US + (uint32_t)angle * (SERVO_MAX_US - SERVO_MIN_US) / 180;
   uint32_t duty = (uint64_t)us * ((1UL << SERVO_PWM_BITS) - 1) / (1000000UL / SERVO_FREQ_HZ);
   ledcWrite(SERVO_PINS[index], duty);
@@ -166,6 +190,7 @@ void handleCommand(String message) {
 
 // Moves each servo 1 degree at a time toward its target at its set speed.
 void updateServos() {
+  if (!servosReady) return;
   unsigned long now = millis();
 
   for (int i = 0; i < NUM_SERVOS; i++) {
@@ -428,6 +453,33 @@ class CharacteristicCallbacks : public BLECharacteristicCallbacks {
 void setup() {
   Serial.begin(115200);
 
+  // Status LED: show WHY the board started (power-on, brownout, RST button, crash) for a moment.
+  esp_reset_reason_t why = esp_reset_reason();
+  switch (why) {
+    case ESP_RST_POWERON:   statusLed(40, 40, 40); break;  // white   = normal power-on
+    case ESP_RST_BROWNOUT:  statusLed(60, 0, 0);   break;  // red     = supply dipped too low
+    case ESP_RST_EXT:       statusLed(0, 40, 40);  break;  // cyan    = RST button / external reset
+    case ESP_RST_SW:        statusLed(40, 20, 0);  break;  // orange  = software restart
+    default:                statusLed(50, 0, 50);  break;  // magenta = crash / watchdog / other
+  }
+  delay(1200);
+
+  // After a brownout/crash: flash YELLOW once per start-up step the previous boot had completed (see markStage),
+  // so you can see where it died. One long violet flash = it died before step 1.
+  if (why != ESP_RST_POWERON && why != ESP_RST_EXT && why != ESP_RST_SW) {
+    uint8_t lastStep = (bootMagic == BOOT_MAGIC) ? bootStage : 0;
+    Serial.printf("Previous start died after step %d\n", lastStep);
+    if (lastStep == 0) {
+      statusLed(40, 0, 60); delay(800); statusLed(0, 0, 0); delay(300);
+    }
+    for (int i = 0; i < lastStep; i++) {
+      statusLed(60, 45, 0); delay(250); statusLed(0, 0, 0); delay(250);
+    }
+    delay(500);
+  }
+  markStage(0);
+  statusLed(0, 0, 40);                                      // blue    = starting up
+
   // Wheel PWM (1 kHz, 8-bit). Uses 4 of the 8 LEDC channels; the 4 servos use the other 4.
   for (int i = 0; i < 4; i++) {
     if (!ledcAttach(MOTOR_PINS[i], MOTOR_PWM_FREQ_HZ, MOTOR_PWM_BITS)) {
@@ -435,6 +487,7 @@ void setup() {
     }
   }
   motors(0, 0, 0, 0);
+  markStage(1);
 
   pinMode(TRIG_PIN, OUTPUT);
   pinMode(ECHO_PIN, INPUT);
@@ -442,20 +495,21 @@ void setup() {
 
   pinMode(BUZZER_PIN, OUTPUT);
   digitalWrite(BUZZER_PIN, LOW);
+  markStage(2);
+
+  markStage(3);  // step 3 is reserved for the wheel encoders (added separately)
 
   mpuOk = mpuInit();
+  markStage(4);
   lastMpuMicros = micros();
   Serial.println(mpuOk ? "MPU-6050 ready (keep the car still while it calibrates)" : "ERROR: MPU-6050 not found (check SDA/SCL/power)");
 
-  // Servo PWM setup (50 Hz, direct LEDC). Servos must use an external 5V supply.
-  for (int i = 0; i < NUM_SERVOS; i++) {
-    if (!ledcAttach(SERVO_PINS[i], SERVO_FREQ_HZ, SERVO_PWM_BITS)) {
-      Serial.printf("ERROR: could not attach servo %d on pin %d\n", i, SERVO_PINS[i]);
-    }
-    writeServo(i, 90);
-  }
+  // Servo PWM is set up later, once Bluetooth is running (see initServosLate in loop).
 
   BLEDevice::init("AI_Car");
+  markStage(5);
+  // Default BLE transmit power on purpose: a stronger radio draws bigger current bursts, and this board's 3V3 rail
+  // (shared with the MPU, ultrasonic sensor and encoders) is close to its limit at power-on.
   BLEDevice::setMTU(185);  // MPU notifications are longer than the default 20 bytes
 
   pServer = BLEDevice::createServer();
@@ -489,17 +543,66 @@ void setup() {
   pMpuCharacteristic->addDescriptor(new BLE2902());
 
   pService->start();
+  markStage(6);
 
   BLEAdvertising* pAdvertising = BLEDevice::getAdvertising();
   pAdvertising->addServiceUUID("12345678-1234-1234-1234-1234567890AB");
   pAdvertising->start();
+  markStage(7);
+  servoInitAt = millis() + 1000;   // servos start 1 s after advertising has begun
 
   Serial.println("AI_Car BLE Ready");
   Serial.println("Motor commands: U, D, L, R, S");
   Serial.println("Servo commands: V<0-3> <angle 0-180> <speed 1-180 deg/sec>, e.g. V0 90 60");
 }
 
+// Status light: steady green = a client is connected, slow green blink = advertising (waiting),
+// fast red blink = nobody connected and NOT advertising (the car is invisible).
+void updateStatusLed() {
+  static unsigned long lastUpdate = 0;
+  unsigned long now = millis();
+  if (now - lastUpdate < 100) return;
+  lastUpdate = now;
+  if (deviceConnected) {
+    statusLed(0, 40, 0);
+  } else if (BLEDevice::getAdvertising()->isAdvertising()) {
+    statusLed(0, (now / 500) % 2 ? 40 : 0, 0);
+  } else {
+    statusLed((now / 150) % 2 ? 60 : 0, 0, 0);
+  }
+}
+
+// Safety net: if nobody is connected the car must be advertising, otherwise it is invisible until a reset.
+void ensureAdvertising() {
+  static unsigned long lastCheck = 0;
+  unsigned long now = millis();
+  if (now - lastCheck < 3000) return;
+  lastCheck = now;
+  if (!deviceConnected && !BLEDevice::getAdvertising()->isAdvertising()) {
+    BLEDevice::startAdvertising();
+    Serial.println("Advertising had stopped: restarted");
+  }
+}
+
+// Starts the servo PWM (50 Hz) once Bluetooth is up and moves every servo to 90 degrees. Servos need their own 5V supply.
+void initServosLate() {
+  if (servosReady || millis() < servoInitAt) return;
+  for (int i = 0; i < NUM_SERVOS; i++) {
+    if (!ledcAttach(SERVO_PINS[i], SERVO_FREQ_HZ, SERVO_PWM_BITS)) {
+      Serial.printf("ERROR: could not attach servo %d on pin %d\n", i, SERVO_PINS[i]);
+    }
+  }
+  servosReady = true;
+  for (int i = 0; i < NUM_SERVOS; i++) writeServo(i, 90);
+  markStage(9);
+}
+
 void loop() {
+  static bool loopMarked = false;
+  if (!loopMarked) { markStage(8); loopMarked = true; }
+  initServosLate();
+  ensureAdvertising();
+  updateStatusLed();
   updateServos();
   updateDistance();
   updateBuzzer();
