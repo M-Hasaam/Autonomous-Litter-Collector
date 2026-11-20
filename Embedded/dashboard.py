@@ -42,8 +42,8 @@ DISTANCE_CHAR_UUID = "11223344-5566-7788-99AA-BBCCDDEEFF00"  # distance cm, "-1"
 MPU_CHAR_UUID = "22334455-6677-8899-AABB-CCDDEEFF0011"       # "yaw,pitch,roll,gx,gy,gz,ax,ay,az"
 ENCODER_CHAR_UUID = "33445566-7788-99AA-BBCC-DDEEFF001122"   # "leftTicks,rightTicks,leftCm,rightCm,leftCm/s,rightCm/s"
 
-SERVO_NAMES = ["Base Rotation", "Shoulder", "Elbow", "Gripper"]
-SERVO_DEFAULT_ANGLES = [90, 120, 90, 90]   # keep in sync with SERVO_DEFAULTS in AI_Car.ino (shoulder at 90 hits the ultrasonic sensor)
+SERVO_NAMES = ["Gripper", "Elbow", "Shoulder", "Servo 4"]
+SERVO_DEFAULT_ANGLES = [90, 120, 90, 90]   # keep in sync with SERVO_DEFAULTS in AI_Car.ino (elbow at 90 hits the ultrasonic sensor)
 SERVO_SPEED = 60                  # default deg/s
 CAR_SPEED_DEFAULT = 100           # wheel speed in percent (one slider for all wheels)
 CAR_SPEED_MIN = 20                # below this the wheels usually stall

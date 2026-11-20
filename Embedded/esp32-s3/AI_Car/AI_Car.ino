@@ -116,6 +116,8 @@ void IRAM_ATTR encoderRightIsr() {
 }
 
 const int NUM_SERVOS = 4;
+// Servo index -> GPIO: 0 gripper (GPIO 15), 1 elbow (GPIO 16), 2 shoulder (GPIO 17), 3 spare "Servo 4" (GPIO 18).
+// (The base-rotation servo was removed from the arm, so the indices were renamed to match the wiring.)
 const int SERVO_PINS[NUM_SERVOS] = {15, 16, 17, 18};
 
 // Servo PWM: 50 Hz, 14-bit, pulse 500..2400 us (same range as before).
@@ -151,7 +153,8 @@ int motorState[4] = {0, 0, 0, 0};  // last requested direction (1 = on) for LU, 
 int straightMode = 0;
 float leftScale = 1.0f, rightScale = 1.0f;
 
-// Start-up angle of each servo. The shoulder (servo 1) starts at 120: at 90 it hits the ultrasonic sensor.
+// Start-up angle of each servo: {gripper, elbow, shoulder, servo 4}. The elbow (servo 1) starts at 120: at 90 it
+// hits the ultrasonic sensor.
 #define SERVO_DEFAULTS {90, 120, 90, 90}
 const int SERVO_DEFAULT_ANGLES[NUM_SERVOS] = SERVO_DEFAULTS;
 int currentAngles[NUM_SERVOS] = SERVO_DEFAULTS;

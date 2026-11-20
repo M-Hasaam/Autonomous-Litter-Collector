@@ -23,8 +23,8 @@ ROLL_SIGN = 1    # +1: positive = leaning right
 # Servo protocol: V<index> <angle> <speed deg/sec>, e.g. V0 90 60
 SERVO_SPEED = 60
 SERVO_SEND_INTERVAL = 0.06  # seconds between live commands while dragging a slider
-SERVO_NAMES = ["Base Rotation", "Shoulder", "Elbow", "Gripper"]
-SERVO_DEFAULT_ANGLES = [90, 120, 90, 90]  # keep in sync with SERVO_DEFAULTS in AI_Car.ino (shoulder at 90 hits the ultrasonic sensor)
+SERVO_NAMES = ["Gripper", "Elbow", "Shoulder", "Servo 4"]
+SERVO_DEFAULT_ANGLES = [90, 120, 90, 90]  # keep in sync with SERVO_DEFAULTS in AI_Car.ino (elbow at 90 hits the ultrasonic sensor)
 
 class AICarController:
     def __init__(self, root):
