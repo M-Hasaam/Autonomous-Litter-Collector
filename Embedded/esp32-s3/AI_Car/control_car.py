@@ -89,6 +89,20 @@ class AICarController:
         self._drive_button(drive, "Right  →", "R", 1, 2)
         self._drive_button(drive, "Reverse  ↓", "D", 2, 1)
 
+        # One speed setting for all wheels (command P<percent>), same as the dashboard slider.
+        speed_row = ttk.Frame(drive)
+        speed_row.grid(row=3, column=0, columnspan=3, sticky="ew", pady=(10, 0))
+        ttk.Label(speed_row, text="Speed").pack(side="left")
+        self.car_speed_var = tk.StringVar(value="100%")
+        ttk.Label(speed_row, textvariable=self.car_speed_var, width=6, anchor="e").pack(side="right")
+        self.car_speed = tk.Scale(
+            speed_row, from_=20, to=100, orient="horizontal", resolution=1, showvalue=False,
+            takefocus=0,  # so the arrow keys keep driving the car instead of moving the slider
+            command=lambda v: self.car_speed_var.set(f"{int(float(v))}%"),
+        )
+        self.car_speed.set(100)
+        self.car_speed.pack(side="left", fill="x", expand=True, padx=8)
+        self.car_speed.bind("<ButtonRelease-1>", lambda e: self._send(f"P{int(self.car_speed.get())}"))
 
         sensor = ttk.LabelFrame(main, text="Ultrasonic sensor", padding=8)
         sensor.pack(fill="x", pady=(14, 0))
