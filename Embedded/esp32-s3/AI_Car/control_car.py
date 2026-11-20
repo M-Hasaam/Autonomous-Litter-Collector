@@ -13,6 +13,7 @@ CHAR_UUID = "87654321-4321-4321-4321-BA0987654321"
 SERVICE_UUID = "12345678-1234-1234-1234-1234567890AB"
 DISTANCE_CHAR_UUID = "11223344-5566-7788-99AA-BBCCDDEEFF00"  # notifies distance in cm ("-1" = no echo)
 MPU_CHAR_UUID = "22334455-6677-8899-AABB-CCDDEEFF0011"  # "yaw,pitch,roll,gx,gy,gz,ax,ay,az" ("NA" = no sensor)
+ENCODER_CHAR_UUID = "33445566-7788-99AA-BBCC-DDEEFF001122"  # "leftTicks,rightTicks,leftCm,rightCm,leftCm/s,rightCm/s"
 
 # Flip any of these to -1 if a direction shows backwards for how the MPU is mounted.
 YAW_SIGN = 1     # +1: turning the car left gives a positive heading
@@ -51,6 +52,9 @@ class AICarController:
         self.roll_var = tk.StringVar(value="Side tilt: --")
         self.spin_var = tk.StringVar(value="Turning speed: --")
         self.heading_deg = 0.0
+        self.enc_left_var = tk.StringVar(value="Left wheel: --")
+        self.enc_right_var = tk.StringVar(value="Right wheel: --")
+        self.enc_avg_var = tk.StringVar(value="Car travelled: --")
         self._build_ui()
 
         self.worker = threading.Thread(target=self._ble_thread, daemon=True)
@@ -85,12 +89,22 @@ class AICarController:
         self._drive_button(drive, "Right  →", "R", 1, 2)
         self._drive_button(drive, "Reverse  ↓", "D", 2, 1)
 
+
         sensor = ttk.LabelFrame(main, text="Ultrasonic sensor", padding=8)
         sensor.pack(fill="x", pady=(14, 0))
         ttk.Label(sensor, text="Distance:").pack(side="left")
         ttk.Label(
             sensor, textvariable=self.distance_var, font=("Segoe UI", 14, "bold")
         ).pack(side="left", padx=8)
+
+        enc = ttk.LabelFrame(main, text="Wheel encoders", padding=8)
+        enc.pack(fill="x", pady=(10, 0))
+        enc_info = ttk.Frame(enc)
+        enc_info.pack(side="left", fill="x", expand=True)
+        ttk.Label(enc_info, textvariable=self.enc_avg_var, font=("Segoe UI", 14, "bold")).pack(anchor="w")
+        ttk.Label(enc_info, textvariable=self.enc_left_var).pack(anchor="w")
+        ttk.Label(enc_info, textvariable=self.enc_right_var).pack(anchor="w")
+        ttk.Button(enc, text="Reset distance", command=lambda: self._send("E")).pack(side="right")
 
         imu = ttk.LabelFrame(main, text="Motion sensor (MPU-6050)", padding=8)
         imu.pack(fill="x", pady=(10, 0))
@@ -206,18 +220,33 @@ class AICarController:
             self.loop.close()
 
     async def _ble_main(self):
+        """Keep looking for the car and reconnect whenever the link drops (the car stops advertising while a
+        stale connection is still open, so the first scans after closing an app can come up empty)."""
+        while not self.stop_event.is_set():
+            try:
+                await self._ble_session()
+            except Exception as exc:
+                self.root.after(0, lambda error=str(exc)[:50]: self.status_var.set(f"BLE: {error} - retrying"))
+            finally:
+                self.connected.clear()
+                self.client = None
+                self.characteristic = None
+            if not self.stop_event.is_set():
+                await asyncio.sleep(1.5)
+
+    async def _ble_session(self):
         self.root.after(0, lambda: self.status_var.set("Searching for AI_Car..."))
-        device = await BleakScanner.find_device_by_name(DEVICE_NAME, timeout=20)
+        device = await BleakScanner.find_device_by_name(DEVICE_NAME, timeout=8)
 
         if device is None:
-            self.root.after(0, lambda: self.status_var.set("AI_Car not found"))
+            self.root.after(0, lambda: self.status_var.set("AI_Car not found - retrying"))
             return
 
         self.client = BleakClient(device)
         await self.client.connect()
 
         if not self.client.is_connected:
-            self.root.after(0, lambda: self.status_var.set("Connection failed"))
+            self.root.after(0, lambda: self.status_var.set("Connection failed - retrying"))
             return
 
         for service in self.client.services:
@@ -227,7 +256,7 @@ class AICarController:
                     break
 
         if self.characteristic is None:
-            self.root.after(0, lambda: self.status_var.set("Control characteristic missing"))
+            self.root.after(0, lambda: self.status_var.set("Control characteristic missing - retrying"))
             await self.client.disconnect()
             return
 
@@ -242,6 +271,11 @@ class AICarController:
             await self.client.start_notify(MPU_CHAR_UUID, self._on_mpu)
         except Exception:
             self.root.after(0, lambda: self.heading_var.set("MPU characteristic missing"))
+
+        try:
+            await self.client.start_notify(ENCODER_CHAR_UUID, self._on_encoder)
+        except Exception:
+            self.root.after(0, lambda: self.enc_avg_var.set("Encoder characteristic missing"))
 
         self.connected.set()
         self.root.after(0, lambda: self.status_var.set("Connected to AI_Car"))
@@ -258,7 +292,21 @@ class AICarController:
         self.connected.clear()
         self.root.after(0, lambda: self.distance_var.set("-- cm"))
         self.root.after(0, lambda: self.heading_var.set("Heading: --"))
+        self.root.after(0, lambda: self.enc_avg_var.set("Car travelled: --"))
         self.root.after(0, lambda: self.status_var.set("Disconnected"))
+
+    def _on_encoder(self, _sender, data):
+        try:
+            lt, rt, lcm, rcm, lv, rv = (float(v) for v in bytes(data).decode("ascii").split(","))
+        except ValueError:
+            return
+
+        def update():
+            self.enc_avg_var.set(f"Car travelled: {(lcm + rcm) / 2:.1f} cm   ({(lv + rv) / 2:.1f} cm/s)")
+            self.enc_left_var.set(f"Left wheel: {lcm:.1f} cm  |  {lv:.1f} cm/s  |  {int(lt)} ticks")
+            self.enc_right_var.set(f"Right wheel: {rcm:.1f} cm  |  {rv:.1f} cm/s  |  {int(rt)} ticks")
+
+        self.root.after(0, update)
 
     def _on_distance(self, _sender, data):
         try:

@@ -40,6 +40,7 @@ CAR_NAME = "AI_Car"
 CHAR_UUID = "87654321-4321-4321-4321-BA0987654321"           # commands (write)
 DISTANCE_CHAR_UUID = "11223344-5566-7788-99AA-BBCCDDEEFF00"  # distance cm, "-1" = no echo
 MPU_CHAR_UUID = "22334455-6677-8899-AABB-CCDDEEFF0011"       # "yaw,pitch,roll,gx,gy,gz,ax,ay,az"
+ENCODER_CHAR_UUID = "33445566-7788-99AA-BBCC-DDEEFF001122"   # "leftTicks,rightTicks,leftCm,rightCm,leftCm/s,rightCm/s"
 
 SERVO_NAMES = ["Base Rotation", "Shoulder", "Elbow", "Gripper"]
 SERVO_DEFAULT_ANGLES = [90, 120, 90, 90]   # keep in sync with SERVO_DEFAULTS in AI_Car.ino (shoulder at 90 hits the ultrasonic sensor)
@@ -47,8 +48,11 @@ SERVO_SPEED = 60                  # default deg/s
 CAR_SPEED_DEFAULT = 100           # wheel speed in percent (one slider for all wheels)
 CAR_SPEED_MIN = 20                # below this the wheels usually stall
 
-# Path map (dead reckoning from gyro + motor commands, no encoders)
-CM_PER_S_AT_100 = 30.0            # how fast the car drives at 100% wheel speed - calibrate with "Test drive"
+# Path map (dead reckoning: gyro heading + wheel-encoder distance; falls back to drive time x speed without encoders)
+CM_PER_S_AT_100 = 30.0            # fallback only (no encoder data): car speed at 100% wheel speed - calibrate with "Test drive"
+ENCODER_LIVE_S = 1.0              # encoder data older than this is treated as missing
+ENCODER_MAX_JUMP_CM = 1000.0      # sanity limit only: a car reboot disconnects BLE, which already resets the baseline.
+                                  # (60 cm used to drop real driving when BLE notifications were delayed for ~1 s)
 REPLAY_TURN_PCT = 70              # wheel speed for the first, fast part of a gyro-controlled turn
 REPLAY_FINE_PCT = 55              # wheel speed for the last ~30 degrees of a turn (slower = more accurate)
                                   # (if the wheels only hum, the dashboard raises these by itself - stall detection)
@@ -243,14 +247,15 @@ class CameraWorker(threading.Thread):
             sock.close()
 
 
-# ---------------------------------------------------------------- dead reckoning (no encoders)
+# ---------------------------------------------------------------- dead reckoning (gyro + wheel encoders)
 def wrap180(angle):
     """Wrap an angle in degrees into [-180, 180)."""
     return (angle + 180.0) % 360.0 - 180.0
 
 
 class PathTracker:
-    """Estimates where the car is: heading from the gyro, distance from drive time x speed.
+    """Estimates where the car is: heading from the gyro, distance from the wheel encoders
+    (or, if the encoders are not reporting, from drive time x speed).
 
     Map frame: the car starts at (0, 0) facing +y ("up"). Heading is in degrees, + = turning left (counter-clockwise).
     `corners` is the recorded route: the origin plus the point where every straight drive ended. Driving back through
@@ -270,6 +275,8 @@ class PathTracker:
         self.yaw_time = 0.0
         self._last_wrapped = None
         self.cmd = "S"
+        self.enc_last = None           # last encoder distance (cm, average of both wheels), None = no baseline yet
+        self.enc_time = 0.0            # when the last encoder reading arrived
         self.reset()
 
     @property
@@ -319,11 +326,31 @@ class PathTracker:
                 self.corners.append((self.x, self.y))
         self._moving = False
 
+    def encoders_live(self, now=None):
+        now = time.monotonic() if now is None else now
+        return self.enc_last is not None and now - self.enc_time <= ENCODER_LIVE_S
+
+    def feed_encoder(self, avg_cm, now=None):
+        """New encoder reading: avg_cm = signed distance of the car since the car's counters were zeroed
+        (average of both wheels, + = forward). Turning in place cancels out (one wheel +, one -)."""
+        now = time.monotonic() if now is None else now
+        last, self.enc_last, self.enc_time = self.enc_last, avg_cm, now
+        if last is None or abs(avg_cm - last) > ENCODER_MAX_JUMP_CM:
+            return                     # first reading, or the car rebooted / counters were reset: new baseline
+        self._advance(avg_cm - last, now)
+
     def update(self, dt, speed_pct, now=None):
-        """Advance the position estimate by dt seconds of whatever the car is currently doing."""
-        if self.cmd not in ("U", "D") or dt <= 0:
+        """Advance the position estimate by dt seconds of whatever the car is currently doing.
+        Does nothing while the encoders are reporting (feed_encoder moves the position then)."""
+        if self.cmd not in ("U", "D") or dt <= 0 or self.encoders_live(now):
             return
         d = self.cm_per_s_100 * speed_pct / 100.0 * dt * (1 if self.cmd == "U" else -BACK_SPEED_RATIO)
+        self._advance(d, now)
+
+    def _advance(self, d, now=None):
+        """Move the car d cm (+ forward, - backward) along its current heading."""
+        if d == 0:
+            return
         h = math.radians(self.heading if now is None else self.heading_now(now))
         self.x += -math.sin(h) * d
         self.y += math.cos(h) * d
@@ -526,7 +553,7 @@ class PathWindow:
     def __init__(self, app):
         self.app = app
         win = self.win = tk.Toplevel(app.root)
-        win.title("Path map - gyro + motors only (no encoders)")
+        win.title("Path map - gyro heading + wheel-encoder distance")
         win.configure(bg=BG)
         h = min(800, win.winfo_screenheight() - 110)
         win.geometry(f"660x{h}+80+20")
@@ -712,13 +739,17 @@ class Dashboard:
         self.spin_var = tk.StringVar(value="Turning speed: --")
         self.pitch_var = tk.StringVar(value="Front-back tilt: --")
         self.roll_var = tk.StringVar(value="Side tilt: --")
+        self._enc_ignore_until = 0.0   # after "Reset to 0": drop encoder readings older than this
+        self.enc_dist_var = tk.StringVar(value="--")
+        self.enc_speed_var = tk.StringVar(value="waiting for encoders")
+        self.enc_wheels_var = tk.StringVar(value="L -- · R --")
         self.rotate_var = tk.StringVar(value=CAMERA_ROTATE)
         self.run_status_var = tk.StringVar(value="")       # progress of turns / planned path / return
         self.photo = None
         self.last_frame_id = -1
         self.saved = 0
 
-        # Path map: dead reckoning from the gyro heading + motor commands (no encoders)
+        # Path map: dead reckoning from the gyro heading + wheel-encoder distance
         self.tracker = PathTracker()
         self.runner = PathRunner(self.tracker, self._runner_send, lambda: int(self.car_speed.get()),
                                  lambda: self.dist_cm, self._runner_finished)
@@ -805,9 +836,16 @@ class Dashboard:
         right.grid(row=1, column=1, sticky="nsew", padx=(8, 16))
         right.columnconfigure(0, weight=1)
 
+        # top row: distance and wheel encoders side by side (the right column has no height to spare)
+        top = tk.Frame(right, bg=BG)
+        top.grid(row=0, column=0, sticky="ew")
+        top.columnconfigure(0, weight=3)
+        top.columnconfigure(1, weight=2)
+        top.rowconfigure(0, weight=1)
+
         # distance
-        dist_card, d = self._card(right, "Distance (ultrasonic)")
-        dist_card.grid(row=0, column=0, sticky="ew")
+        dist_card, d = self._card(top, "Distance (ultrasonic)")
+        dist_card.grid(row=0, column=0, sticky="nsew", padx=(0, 5))
         row = tk.Frame(d, bg=CARD)
         row.pack(fill="x")
         self.dist_label = tk.Label(row, textvariable=self.dist_var, bg=CARD, fg=TEXT, font=(FONT, 30, "bold"))
@@ -863,6 +901,18 @@ class Dashboard:
         self.car_speed.pack(side="left", fill="x", expand=True, padx=8)
         self.car_speed.bind("<ButtonPress-1>", lambda e: setattr(self, "speed_dragging", True))
         self.car_speed.bind("<ButtonRelease-1>", lambda e: self._speed_released())
+        # wheel encoders
+        enc_card, e = self._card(top, "Wheels (encoders)")
+        enc_card.grid(row=0, column=1, sticky="nsew", padx=(5, 0))
+        erow = tk.Frame(e, bg=CARD)
+        erow.pack(fill="x")
+        tk.Label(erow, textvariable=self.enc_dist_var, bg=CARD, fg=TEXT, font=(FONT, 22, "bold")).pack(side="left")
+        tk.Label(erow, text=" cm", bg=CARD, fg=MUTED, font=(FONT, 12)).pack(side="left", pady=(8, 0))
+        tk.Label(erow, textvariable=self.enc_speed_var, bg=CARD, fg=MUTED, font=(FONT, 10)).pack(side="right")
+        wrow = tk.Frame(e, bg=CARD)
+        wrow.pack(fill="x")
+        tk.Label(wrow, textvariable=self.enc_wheels_var, bg=CARD, fg=MUTED, font=(FONT, 10)).pack(side="left")
+        self._button(wrow, "Reset to 0", self._reset_encoders).pack(side="right")
 
         # servos (full width)
         servo_card, s = self._card(root, "Robotic arm servos")
@@ -1036,6 +1086,35 @@ class Dashboard:
         stamp = time.monotonic()       # when the reading arrived (the UI thread handles it a moment later)
         self._post(lambda: self._show_mpu(yaw * YAW_SIGN, pitch * PITCH_SIGN, roll * ROLL_SIGN, gz * YAW_SIGN, stamp))
 
+    def _on_encoder(self, _sender, data):
+        try:
+            lt, rt, lcm, rcm, lv, rv = (float(v) for v in bytes(data).decode("ascii").split(","))
+        except ValueError:
+            return
+        stamp = time.monotonic()
+        self._post(lambda: self._show_encoder(lcm, rcm, lv, rv, stamp))
+
+    def _reset_encoders(self):
+        """Zero both wheel counters on the car ('E'). The car's counters jump to 0, so forget the old baseline and
+        ignore readings already in flight (they still carry the old distance) for a moment."""
+        if not self.connected.is_set():
+            return
+        self.tracker.enc_last = None
+        self._enc_ignore_until = time.monotonic() + 0.7
+        self.enc_dist_var.set("0.0")
+        self.enc_speed_var.set("stopped")
+        self.enc_wheels_var.set("L 0.0 · R 0.0")
+        self._send("E")
+
+    def _show_encoder(self, lcm, rcm, lv, rv, stamp):
+        if stamp < self._enc_ignore_until:
+            return
+        avg, speed = (lcm + rcm) / 2, (lv + rv) / 2
+        self.tracker.feed_encoder(avg, stamp)
+        self.enc_dist_var.set(f"{avg:.1f}")
+        self.enc_speed_var.set(f"{speed:.1f} cm/s" if abs(speed) >= 0.5 else "stopped")
+        self.enc_wheels_var.set(f"L {lcm:.1f} · R {rcm:.1f}")
+
     @staticmethod
     def _describe(value, positive, negative):
         return "level" if abs(value) < 1 else f"{abs(value):.0f}° {positive if value > 0 else negative}"
@@ -1066,6 +1145,10 @@ class Dashboard:
         self.roll_var.set("Side tilt: --")
         self.heading_deg = 0.0
         self.dist_cm = None
+        self.enc_dist_var.set("--")
+        self.enc_speed_var.set("waiting for encoders")
+        self.enc_wheels_var.set("L -- · R --")
+        self.tracker.enc_last = None   # the car may have rebooted: its encoder counters start from 0 again
         self._yaw_resync = True        # the car may have rebooted: its yaw starts from 0 again
         self._draw_dial()
 
@@ -1108,7 +1191,8 @@ class Dashboard:
                     await asyncio.sleep(2)
                     continue
                 self.write_response = "write" in self.characteristic.properties
-                for uuid, handler in ((DISTANCE_CHAR_UUID, self._on_distance), (MPU_CHAR_UUID, self._on_mpu)):
+                for uuid, handler in ((DISTANCE_CHAR_UUID, self._on_distance), (MPU_CHAR_UUID, self._on_mpu),
+                                      (ENCODER_CHAR_UUID, self._on_encoder)):
                     try:
                         await client.start_notify(uuid, handler)
                     except Exception:

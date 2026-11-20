@@ -81,6 +81,40 @@ const int LD = IN1;
 const int RU = IN3;
 const int RD = IN4;
 
+// Wheel encoders (VCC -> 3V3, GND, D0 -> pin; A0 left unconnected).
+const int ENCODER_LEFT_PIN = 8;
+const int ENCODER_RIGHT_PIN = 3;   // GPIO 3 is a strapping pin: if the board fails to boot, move this wire
+
+// Set these two to match your hardware (distance and speed depend on them).
+const int ENCODER_SLOTS_PER_REV = 40;             // calibrated: 100 cm of travel gave ~196 ticks (0.51 cm/tick) with a 6.5 cm wheel
+const float WHEEL_DIAMETER_CM = 6.5f;
+const float ENCODER_CM_PER_TICK = 3.14159265f * WHEEL_DIAMETER_CM / ENCODER_SLOTS_PER_REV;
+const unsigned long ENCODER_DEBOUNCE_US = 300;    // ignore pulses closer together than this (noise)
+const unsigned long ENCODER_NOTIFY_INTERVAL_MS = 200;
+const char* ENCODER_CHAR_UUID = "33445566-7788-99AA-BBCC-DDEEFF001122";
+
+BLECharacteristic* pEncoderCharacteristic = nullptr;
+volatile long encoderLeftTicks = 0, encoderRightTicks = 0;     // signed: + forward, - reverse
+volatile int encoderLeftDir = 1, encoderRightDir = 1;          // direction of the last motor command
+volatile unsigned long encoderLeftLastUs = 0, encoderRightLastUs = 0;
+unsigned long lastEncoderNotify = 0;
+long lastEncoderLeftTicks = 0, lastEncoderRightTicks = 0;
+
+// A single-channel encoder cannot sense direction, so the sign comes from the motor command.
+void IRAM_ATTR encoderLeftIsr() {
+  unsigned long now = micros();
+  if (now - encoderLeftLastUs < ENCODER_DEBOUNCE_US) return;
+  encoderLeftLastUs = now;
+  encoderLeftTicks += encoderLeftDir;
+}
+
+void IRAM_ATTR encoderRightIsr() {
+  unsigned long now = micros();
+  if (now - encoderRightLastUs < ENCODER_DEBOUNCE_US) return;
+  encoderRightLastUs = now;
+  encoderRightTicks += encoderRightDir;
+}
+
 const int NUM_SERVOS = 4;
 const int SERVO_PINS[NUM_SERVOS] = {15, 16, 17, 18};
 
@@ -111,6 +145,7 @@ const uint32_t MOTOR_PWM_MAX = (1UL << MOTOR_PWM_BITS) - 1;
 int motorSpeedPct = 100;
 int motorState[4] = {0, 0, 0, 0};  // last requested direction (1 = on) for LU, LD, RU, RD
 
+
 // Start-up angle of each servo. The shoulder (servo 1) starts at 120: at 90 it hits the ultrasonic sensor.
 #define SERVO_DEFAULTS {90, 120, 90, 90}
 const int SERVO_DEFAULT_ANGLES[NUM_SERVOS] = SERVO_DEFAULTS;
@@ -124,6 +159,10 @@ void motors(int lu, int ld, int ru, int rd) {
   motorState[1] = ld;
   motorState[2] = ru;
   motorState[3] = rd;
+
+  // Remember each side's direction for the encoders (kept while stopped so coasting counts the same way).
+  if (lu || ld) encoderLeftDir = lu ? 1 : -1;
+  if (ru || rd) encoderRightDir = ru ? 1 : -1;
 
   uint32_t duty = MOTOR_PWM_MAX * motorSpeedPct / 100;
   for (int i = 0; i < 4; i++) {
@@ -149,6 +188,14 @@ void handleCommand(String message) {
       case 'S': motors(0, 0, 0, 0); break;
       case 'Z': mpuYawResetRequested = true; break;  // heading back to 0
       case 'C': mpuCalRequested = true; break;       // re-calibrate gyro (car must be still)
+      case 'E':                                      // reset encoder distance to 0
+        noInterrupts();
+        encoderLeftTicks = 0;
+        encoderRightTicks = 0;
+        interrupts();
+        lastEncoderLeftTicks = 0;
+        lastEncoderRightTicks = 0;
+        break;
       default: Serial.println("Unknown motor command"); break;
     }
     return;
@@ -429,6 +476,35 @@ void notifyMpu() {
   }
 }
 
+// Sends "leftTicks,rightTicks,leftCm,rightCm,leftCmPerS,rightCmPerS" over BLE (+ = forward).
+void updateEncoders() {
+  unsigned long now = millis();
+  unsigned long dt = now - lastEncoderNotify;
+  if (dt < ENCODER_NOTIFY_INTERVAL_MS) return;
+  lastEncoderNotify = now;
+
+  noInterrupts();
+  long left = encoderLeftTicks;
+  long right = encoderRightTicks;
+  interrupts();
+
+  float seconds = dt / 1000.0f;
+  float leftSpeed = (left - lastEncoderLeftTicks) * ENCODER_CM_PER_TICK / seconds;
+  float rightSpeed = (right - lastEncoderRightTicks) * ENCODER_CM_PER_TICK / seconds;
+  lastEncoderLeftTicks = left;
+  lastEncoderRightTicks = right;
+
+  char buf[80];
+  snprintf(buf, sizeof(buf), "%ld,%ld,%.1f,%.1f,%.1f,%.1f",
+           left, right, left * ENCODER_CM_PER_TICK, right * ENCODER_CM_PER_TICK, leftSpeed, rightSpeed);
+  Serial.printf("Encoder: %s\n", buf);
+
+  if (deviceConnected && pEncoderCharacteristic) {
+    pEncoderCharacteristic->setValue((uint8_t*)buf, strlen(buf));
+    pEncoderCharacteristic->notify();
+  }
+}
+
 class ServerCallbacks: public BLEServerCallbacks {
   void onConnect(BLEServer* server) override {
     deviceConnected = true;
@@ -500,7 +576,12 @@ void setup() {
   digitalWrite(BUZZER_PIN, LOW);
   markStage(2);
 
-  markStage(3);  // step 3 is reserved for the wheel encoders (added separately)
+  // Wheel encoders: D0 pulses HIGH once per slot.
+  pinMode(ENCODER_LEFT_PIN, INPUT);
+  pinMode(ENCODER_RIGHT_PIN, INPUT);
+  attachInterrupt(digitalPinToInterrupt(ENCODER_LEFT_PIN), encoderLeftIsr, RISING);
+  attachInterrupt(digitalPinToInterrupt(ENCODER_RIGHT_PIN), encoderRightIsr, RISING);
+  markStage(3);
 
   mpuOk = mpuInit();
   markStage(4);
@@ -544,6 +625,14 @@ void setup() {
     BLECharacteristic::PROPERTY_NOTIFY
   );
   pMpuCharacteristic->addDescriptor(new BLE2902());
+
+  // Wheel encoders, ASCII "leftTicks,rightTicks,leftCm,rightCm,leftCm/s,rightCm/s".
+  pEncoderCharacteristic = pService->createCharacteristic(
+    ENCODER_CHAR_UUID,
+    BLECharacteristic::PROPERTY_READ |
+    BLECharacteristic::PROPERTY_NOTIFY
+  );
+  pEncoderCharacteristic->addDescriptor(new BLE2902());
 
   pService->start();
   markStage(6);
@@ -611,5 +700,6 @@ void loop() {
   updateBuzzer();
   updateMpu();
   notifyMpu();
+  updateEncoders();
   delay(2);
 }
