@@ -145,6 +145,11 @@ const uint32_t MOTOR_PWM_MAX = (1UL << MOTOR_PWM_BITS) - 1;
 int motorSpeedPct = 100;
 int motorState[4] = {0, 0, 0, 0};  // last requested direction (1 = on) for LU, LD, RU, RD
 
+// Straight-drive assist (see updateStraightAssist): power scale of each side, 1.0 = full. The faster side is
+// reduced so both sides keep the same speed. Command G<mode>: bit 0 (1) = gyro heading hold, bit 1 (2) = encoder
+// matching, so G0 = off, G1 = gyro, G2 = encoders, G3 = both (the two errors are averaged).
+int straightMode = 0;
+float leftScale = 1.0f, rightScale = 1.0f;
 
 // Start-up angle of each servo. The shoulder (servo 1) starts at 120: at 90 it hits the ultrasonic sensor.
 #define SERVO_DEFAULTS {90, 120, 90, 90}
@@ -166,7 +171,8 @@ void motors(int lu, int ld, int ru, int rd) {
 
   uint32_t duty = MOTOR_PWM_MAX * motorSpeedPct / 100;
   for (int i = 0; i < 4; i++) {
-    ledcWrite(MOTOR_PINS[i], motorState[i] ? duty : 0);
+    float scale = (i < 2) ? leftScale : rightScale;  // MOTOR_PINS = {LU, LD, RU, RD}: 0,1 = left side, 2,3 = right
+    ledcWrite(MOTOR_PINS[i], motorState[i] ? (uint32_t)(duty * scale) : 0);
   }
 }
 
@@ -198,6 +204,13 @@ void handleCommand(String message) {
         break;
       default: Serial.println("Unknown motor command"); break;
     }
+    return;
+  }
+
+  // Straight-drive assist: G0 = off, G1 = gyro, G2 = encoders, G3 = both.
+  if (message.charAt(0) == 'G' && message.length() == 2 && message.charAt(1) >= '0' && message.charAt(1) <= '3') {
+    straightMode = message.charAt(1) - '0';
+    Serial.printf("Straight assist mode %d (1 = gyro, 2 = encoders, 3 = both, 0 = off)\n", straightMode);
     return;
   }
 
@@ -505,6 +518,114 @@ void updateEncoders() {
   }
 }
 
+// ---- Straight-drive assist --------------------------------------------------------------------------------
+// While the car drives straight forward or backward, a PI controller lowers the power of the side that is ahead so
+// the heading stays where it was when the drive started. The heading error comes from the GYRO when the MPU is
+// working (it does not depend on the encoders being right or on which wire is on which pin), otherwise from the
+// difference in encoder ticks between the two sides. What it learns about the motor imbalance is kept for the next
+// drive in the same direction. Tuned in a simulation with wheels that differ by 10-25%.
+const float STRAIGHT_DEG_PER_TICK = 1.95f;        // heading change caused by 1 tick of left-right difference (about 15 cm track)
+const float STRAIGHT_KP = 0.04f;                  // power trim per tick of left-right difference
+const float STRAIGHT_KI = 0.05f;                  // power trim per (tick * second)
+const float STRAIGHT_TRIM_MAX = 0.35f;            // never reduce one side by more than 35%
+const unsigned long STRAIGHT_PERIOD_MS = 50;      // control rate (20 Hz)
+const unsigned long STRAIGHT_SETTLE_MS = 250;     // let the car start moving before correcting
+bool straightActive = false;
+int straightDir = 0;
+float straightTrimI = 0, straightTrimFwd = 0, straightTrimRev = 0;
+long straightStartL = 0, straightStartR = 0;
+float straightStartYaw = 0;
+unsigned long straightStartMs = 0, lastStraightMs = 0;
+
+// trim > 0: left side is ahead, reduce it. trim < 0: right side is ahead, reduce it.
+void setStraightScales(float trim) {
+  float newLeft = trim > 0 ? 1.0f - trim : 1.0f;
+  float newRight = trim < 0 ? 1.0f + trim : 1.0f;
+  if (newLeft == leftScale && newRight == rightScale) return;
+  leftScale = newLeft;
+  rightScale = newRight;
+  motors(motorState[0], motorState[1], motorState[2], motorState[3]);  // apply to wheels that are running now
+}
+
+void updateStraightAssist() {
+  unsigned long now = millis();
+  if (now - lastStraightMs < STRAIGHT_PERIOD_MS) return;
+  float dt = (now - lastStraightMs) / 1000.0f;
+  lastStraightMs = now;
+
+  int dir = 0;  // +1 straight forward, -1 straight backward, 0 = stopped or turning
+  if (motorState[0] && motorState[2] && !motorState[1] && !motorState[3]) dir = 1;
+  else if (motorState[1] && motorState[3] && !motorState[0] && !motorState[2]) dir = -1;
+
+  if (straightMode == 0 || dir == 0) {
+    if (straightActive) {  // drive ended: remember what was learned
+      if (straightDir > 0) straightTrimFwd = straightTrimI; else straightTrimRev = straightTrimI;
+      straightActive = false;
+    }
+    setStraightScales(0.0f);  // both sides at full power again
+    return;
+  }
+
+  if (!straightActive || straightDir != dir) {  // a new straight drive starts
+    if (straightActive) {
+      if (straightDir > 0) straightTrimFwd = straightTrimI; else straightTrimRev = straightTrimI;
+    }
+    straightActive = true;
+    straightDir = dir;
+    noInterrupts();
+    straightStartL = encoderLeftTicks;
+    straightStartR = encoderRightTicks;
+    interrupts();
+    straightStartMs = now;
+    straightStartYaw = mpuYaw;
+    straightTrimI = (dir > 0) ? straightTrimFwd : straightTrimRev;  // start with what was learned before
+    setStraightScales(straightTrimI);
+    return;
+  }
+
+  if (now - straightStartMs < STRAIGHT_SETTLE_MS) return;
+
+  // Heading error in "ticks of left-right difference": + = the left side is ahead (the car turned right).
+  bool wantGyro = (straightMode & 1) && mpuOk;
+  bool wantEnc = (straightMode & 2) || ((straightMode & 1) && !mpuOk);  // encoders also back up a missing gyro
+  float eGyro = 0, eEnc = 0;
+  bool haveGyro = false, haveEnc = false;
+  if (wantGyro) {
+    float yawErr = mpuYaw - straightStartYaw;       // + = turned left (counter-clockwise), so the right side is ahead
+    while (yawErr > 180.0f) yawErr -= 360.0f;
+    while (yawErr < -180.0f) yawErr += 360.0f;
+    eGyro = -yawErr / STRAIGHT_DEG_PER_TICK;
+    haveGyro = true;
+  }
+  if (wantEnc) {
+    noInterrupts();
+    long l = encoderLeftTicks;
+    long r = encoderRightTicks;
+    interrupts();
+    long dl = labs(l - straightStartL);
+    long dr = labs(r - straightStartR);
+    long hi = dl > dr ? dl : dr, lo = dl > dr ? dr : dl;
+    bool moving = (dl + dr) >= 6;
+    bool trusted = !(hi > 20 && lo * 5 < hi);       // one encoder reporting almost nothing: don't trust it
+    if (moving && trusted) {
+      eEnc = (float)(dl - dr);                      // + = the left side has gone farther
+      haveEnc = true;
+    }
+  }
+  float e;
+  if (haveGyro && haveEnc) e = 0.5f * (eGyro + eEnc);
+  else if (haveGyro) e = eGyro;
+  else if (haveEnc) e = eEnc;
+  else return;                                      // nothing reliable to steer by yet
+  straightTrimI += STRAIGHT_KI * e * dt;
+  if (straightTrimI > STRAIGHT_TRIM_MAX) straightTrimI = STRAIGHT_TRIM_MAX;
+  if (straightTrimI < -STRAIGHT_TRIM_MAX) straightTrimI = -STRAIGHT_TRIM_MAX;
+  float trim = STRAIGHT_KP * e + straightTrimI;
+  if (trim > STRAIGHT_TRIM_MAX) trim = STRAIGHT_TRIM_MAX;
+  if (trim < -STRAIGHT_TRIM_MAX) trim = -STRAIGHT_TRIM_MAX;
+  setStraightScales(trim);
+}
+
 class ServerCallbacks: public BLEServerCallbacks {
   void onConnect(BLEServer* server) override {
     deviceConnected = true;
@@ -701,5 +822,6 @@ void loop() {
   updateMpu();
   notifyMpu();
   updateEncoders();
+  updateStraightAssist();
   delay(2);
 }

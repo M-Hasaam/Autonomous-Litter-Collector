@@ -740,6 +740,8 @@ class Dashboard:
         self.pitch_var = tk.StringVar(value="Front-back tilt: --")
         self.roll_var = tk.StringVar(value="Side tilt: --")
         self._enc_ignore_until = 0.0   # after "Reset to 0": drop encoder readings older than this
+        self.gyro_assist_var = tk.BooleanVar(value=True)    # straight-drive assist: gyro heading on by default
+        self.enc_assist_var = tk.BooleanVar(value=False)    # ... and encoder matching off (tick it to try it)
         self.enc_dist_var = tk.StringVar(value="--")
         self.enc_speed_var = tk.StringVar(value="waiting for encoders")
         self.enc_wheels_var = tk.StringVar(value="L -- · R --")
@@ -901,6 +903,18 @@ class Dashboard:
         self.car_speed.pack(side="left", fill="x", expand=True, padx=8)
         self.car_speed.bind("<ButtonPress-1>", lambda e: setattr(self, "speed_dragging", True))
         self.car_speed.bind("<ButtonRelease-1>", lambda e: self._speed_released())
+        # straight-drive assist: the car slows the faster side so it keeps going straight. Two independent options
+        # (sent as G0..G3): gyro heading hold, and matching the left and right wheel travel from the encoders.
+        assist_row = tk.Frame(dr, bg=CARD)
+        assist_row.grid(row=4, column=0, columnspan=3, sticky="w", pady=(8, 0))
+        for text, var in (("Straight assist: gyro heading", self.gyro_assist_var),
+                          ("Straight assist: encoders", self.enc_assist_var)):
+            tk.Checkbutton(
+                assist_row, text=text, variable=var, command=self._send_straight, bg=CARD, fg=TEXT,
+                selectcolor=CARD_HI, activebackground=CARD, activeforeground=TEXT, highlightthickness=0, bd=0,
+                takefocus=0, anchor="w", font=(FONT, 9), cursor="hand2",
+            ).pack(side="left", padx=(0, 18))
+
         # wheel encoders
         enc_card, e = self._card(top, "Wheels (encoders)")
         enc_card.grid(row=0, column=1, sticky="nsew", padx=(5, 0))
@@ -1199,6 +1213,7 @@ class Dashboard:
                         pass
                 self.connected.set()
                 self._post(self._send_speed)   # make the car match the slider after (re)connecting
+                self._post(self._send_straight)   # and the straight-drive checkbox
                 self._post(lambda: self.car_text.set("Connected to AI_Car"))
                 while not self.stop_event.is_set() and client.is_connected:
                     await asyncio.sleep(0.1)
@@ -1353,6 +1368,10 @@ class Dashboard:
 
     def _send_speed(self):
         self._send(f"P{int(self.car_speed.get())}")
+
+    def _send_straight(self):
+        mode = (1 if self.gyro_assist_var.get() else 0) | (2 if self.enc_assist_var.get() else 0)
+        self._send(f"G{mode}")
 
     def _send_speed_throttled(self):
         if self.pending_speed is not None:
