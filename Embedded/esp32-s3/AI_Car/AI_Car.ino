@@ -10,8 +10,8 @@
 // The sensor is powered from the S3's 3V3 pin (on the converter's 5V it sent the S3 into a brownout restart loop
 // at power-on), so ECHO is 3.3V and goes straight to the pin. If you power it from 5V again, put a divider on ECHO
 // (1k in series, 2k to GND): the S3 pins are not 5V tolerant.
-const int TRIG_PIN = 10;
-const int ECHO_PIN = 11;
+const int TRIG_PIN = 1;   // moved from GPIO 10 to the header with the MPU (TX/RX side of the board)
+const int ECHO_PIN = 2;   // moved from GPIO 11
 
 // Active buzzer: + to BUZZER_PIN, - to GND. Beeps while an obstacle is closer than BUZZER_ON_CM.
 // (An active buzzer has its own tone generator; all 8 PWM channels are already used by wheels and servos.)
